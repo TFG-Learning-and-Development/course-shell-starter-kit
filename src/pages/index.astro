@@ -51,9 +51,7 @@ import { courseData } from "../data/course";
         <div class="basics-grid container">
           <div class="recommendation-layout">
             <div class="runner-panel">
-              <img class="ts-watermark" src="/ts-logomark.svg" alt="" aria-hidden="true" />
               <img class="runner-athlete" src={courseData.basics.runnerImage} alt={courseData.basics.runnerAlt} />
-              <img class="runner-mobile-composite" src="/images/supernova/runner-mobile-composite.png" alt={courseData.basics.runnerAlt} />
             </div>
             <div class="recommendations-panel">
               <p>{courseData.basics.recommendationLead}</p>
@@ -64,7 +62,7 @@ import { courseData } from "../data/course";
           </div>
           <div class="benefits-copy">
             <h3>{courseData.basics.benefitsTitle}</h3>
-            <p><strong>Dreamstrike + cushioning, Support Rods,</strong> and the <strong>Guide Your Ride support platform</strong> help Customers experience everyday comfort, reliable support, and a more stable ride during regular runs.</p>
+            <p>{courseData.basics.benefits}</p>
           </div>
           <img class="benefits-image" src={courseData.basics.benefitsImage} alt={courseData.basics.benefitsAlt} />
         </div>
@@ -89,11 +87,11 @@ import { courseData } from "../data/course";
                 <span class="range-card-inner">
                   <span class="range-card-face range-card-front" aria-hidden="false">
                     <img src={card.image} alt={card.alt} />
-                    <span class="range-card-title">{card.customerNeed}</span>
+                    <span class="range-card-title">{courseData.range.needs[card.option]}</span>
                   </span>
                   <span class="range-card-face range-card-back" aria-hidden="true">
                     <span class="range-card-detail">
-                      <span>{card.option}</span>
+                      <span class="range-card-product-name">{card.option}</span>
                     </span>
                     <span class="range-card-detail">
                       <strong>Simple recommendation cue</strong>
@@ -113,7 +111,6 @@ import { courseData } from "../data/course";
           <div class="technology-grid">
             <div class="technology-visual">
               <img src={courseData.technology.image} alt={courseData.technology.imageAlt} />
-              <img class="technology-mobile-graphic" src="/images/supernova/technology-mobile-hotspots.png" alt={courseData.technology.imageAlt} />
               {courseData.technology.items.map((item, index) => (
                 <button
                   class:list={["hotspot", `hotspot--${index + 1}`, index === 0 && "is-active"]}
@@ -199,7 +196,27 @@ import { courseData } from "../data/course";
                 <div class="branch-connector" aria-hidden="true"></div>
                 <div class="branch-match">{branch.match}</div>
                 <div class="branch-connector" aria-hidden="true"></div>
-                <div class="branch-recommend"><span class="branch-shoe"><img src={branch.image} alt={branch.alt} /></span><span>{branch.recommend}</span></div>
+                <div class="branch-recommend">
+                  {index === 0 ? (
+                    <span class="branch-shoe-pair">
+                      <span class="branch-shoe-option">
+                        <span class="branch-pair-image"><img src="/images/adistar/adistar-charge-white.png" alt="A white Adidas Adistar Charge running shoe." /></span>
+                        <span>Adistar Charge</span>
+                      </span>
+                      <span class="branch-shoe-divider" aria-hidden="true"></span>
+                      <span class="branch-shoe-option">
+                        <span class="branch-pair-image"><img src="/images/adistar/adistar-neutral.png" alt="A neutral-coloured Adidas Adistar 4 running shoe." /></span>
+                        <span>Adistar 4</span>
+                      </span>
+                    </span>
+                  ) : (
+                    <>
+                      <span class="branch-shoe"><img src={branch.image} alt={branch.alt} /></span>
+                      <span class="branch-product-label">{index === 1 ? "Adistar 4" : "Adistar Charge"}</span>
+                    </>
+                  )}
+                  <span class="sr-only">{branch.recommend}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -253,7 +270,7 @@ import { courseData } from "../data/course";
   </div>
 
   <script>
-    const storageKey = "adidas-supernova-course-progress-v1";
+    const storageKey = "adidas-adistar-course-progress-v1";
     const scorm = (window as any).CourseSCORM;
     const navToggle = document.querySelector(".nav-toggle");
     const links = document.querySelector(".course-links");
@@ -272,7 +289,7 @@ import { courseData } from "../data/course";
         const flipped = card.getAttribute("aria-pressed") !== "true";
         card.setAttribute("aria-pressed", String(flipped));
         card.classList.toggle("is-flipped", flipped);
-        card.setAttribute("aria-label", `${flipped ? "Show product" : "Show details"} for ${card.dataset.productOption || "Supernova option"}`);
+        card.setAttribute("aria-label", `${flipped ? "Show product" : "Show details"} for ${card.dataset.productOption || "Adistar option"}`);
         card.querySelector(".range-card-front")?.setAttribute("aria-hidden", String(flipped));
         card.querySelector(".range-card-back")?.setAttribute("aria-hidden", String(!flipped));
       });
@@ -297,18 +314,6 @@ import { courseData } from "../data/course";
         showTechnology(index);
       });
     });
-
-    const technologyMobileQuery = window.matchMedia("(max-width: 760px)");
-    const setMobileHotspotState = () => {
-      document.querySelectorAll(".hotspot").forEach((hotspot) => {
-        const isMobile = technologyMobileQuery.matches;
-        hotspot.toggleAttribute("disabled", isMobile);
-        hotspot.tabIndex = isMobile ? -1 : 0;
-        hotspot.setAttribute("aria-hidden", String(isMobile));
-      });
-    };
-    setMobileHotspotState();
-    technologyMobileQuery.addEventListener("change", setMobileHotspotState);
 
     document.querySelectorAll(".branch-ask").forEach((button) => {
       button.addEventListener("click", () => {

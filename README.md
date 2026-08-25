@@ -1,6 +1,6 @@
-# Adidas Supernova Quick Course
+# Adidas Adistar Quick Course
 
-An Astro learning experience covering the Adidas Supernova everyday running range,
+An Astro learning experience covering the Adidas Adistar distance-running range,
 with responsive interactions, progress persistence, and SCORM 1.2 support.
 
 ## Commands
@@ -13,4 +13,4 @@ npm run prepare:scorm
 ```
 
 Course copy is kept in `src/data/course.ts` and the supplied course imagery is stored
-under `public/images/supernova`.
+under `public/images/adistar`.

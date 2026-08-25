@@ -53,12 +53,12 @@ async function makePathsRelative() {
 
 function manifestFor(files) {
   const fileEntries = files
-    .filter((file) => file !== "imsmanifest.xml")
+    .filter((file) => file !== "imsmanifest.xml" && file !== "scorm-api.js")
     .map((file) => `      <file href="${xmlEscape(file)}" />`)
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="ADIDAS_SUPERNOVA_QUICK_COURSE_SCORM_12"
+<manifest identifier="ADIDAS_ADISTAR_QUICK_COURSE_SCORM_12"
   version="1.0"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
@@ -68,16 +68,16 @@ function manifestFor(files) {
     <schema>ADL SCORM</schema>
     <schemaversion>1.2</schemaversion>
   </metadata>
-  <organizations default="SUPERNOVA_ORG">
-    <organization identifier="SUPERNOVA_ORG">
-      <title>Adidas Supernova Course</title>
-      <item identifier="SUPERNOVA_ITEM" identifierref="SUPERNOVA_RESOURCE">
-        <title>Adidas Supernova Course</title>
+  <organizations default="ADISTAR_ORG">
+    <organization identifier="ADISTAR_ORG">
+      <title>Adidas Adistar Quick Course</title>
+      <item identifier="ADISTAR_ITEM" identifierref="ADISTAR_RESOURCE">
+        <title>Adidas Adistar Quick Course</title>
       </item>
     </organization>
   </organizations>
   <resources>
-    <resource identifier="SUPERNOVA_RESOURCE" type="webcontent" adlcp:scormtype="sco" href="index.html">
+    <resource identifier="ADISTAR_RESOURCE" type="webcontent" adlcp:scormtype="sco" href="index.html">
 ${fileEntries}
     </resource>
   </resources>
@@ -134,7 +134,7 @@ files = await listFiles(dist);
 await validateReferences(files);
 
 const manifest = await readFile(path.join(dist, "imsmanifest.xml"), "utf8");
-const wrapper = await readFile(path.join(dist, "scorm-api.js"), "utf8");
+const wrapper = await readFile(path.join(dist, "course-runtime.js"), "utf8");
 if (!manifest.includes('href="index.html"')) throw new Error("Manifest launch file is not index.html");
 if (/masteryscore|adlcp:masteryscore|\bpassed\b|\bfailed\b/i.test(manifest)) throw new Error("Manifest contains score or pass/fail requirements");
 for (const required of [

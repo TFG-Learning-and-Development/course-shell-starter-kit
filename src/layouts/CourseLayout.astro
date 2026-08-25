@@ -6,7 +6,7 @@ interface Props {
   description?: string;
 }
 
-const { title, description = "Adidas Supernova Course" } = Astro.props as Props;
+const { title, description = "Adidas Adistar Quick Course" } = Astro.props as Props;
 ---
 
 <!doctype html>
@@ -17,7 +17,7 @@ const { title, description = "Adidas Supernova Course" } = Astro.props as Props;
     <meta name="description" content={description} />
     <meta name="theme-color" content="#009FD7" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <script is:inline src="/scorm-api.js"></script>
+    <script is:inline src="/course-runtime.js"></script>
     <title>{title}</title>
   </head>
   <body>
