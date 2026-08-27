@@ -264,7 +264,7 @@ import { courseData } from "../data/course";
 
     <footer class="course-footer container">
       <span aria-hidden="true"></span>
-      <a href={courseData.footer.url}>{courseData.footer.button} <span aria-hidden="true">&#8250;</span></a>
+      <a class="course-return" href={courseData.footer.url}>{courseData.footer.button} <span aria-hidden="true">&#8250;</span></a>
     </footer>
     <a class="back-to-top" href="#top" aria-label="Back to top">&#8593;</a>
   </div>
@@ -274,6 +274,13 @@ import { courseData } from "../data/course";
     const scorm = (window as any).CourseSCORM;
     const navToggle = document.querySelector(".nav-toggle");
     const links = document.querySelector(".course-links");
+    const courseReturn = document.querySelector(".course-return");
+    const backToTop = document.querySelector(".back-to-top");
+    backToTop?.addEventListener("click", (event) => {
+      event.preventDefault();
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      window.scrollTo({ top: 0, left: 0, behavior });
+    });
     navToggle?.addEventListener("click", () => {
       const open = navToggle.getAttribute("aria-expanded") === "true";
       navToggle.setAttribute("aria-expanded", String(!open));
@@ -344,10 +351,9 @@ import { courseData } from "../data/course";
       scorm?.setSuspendData?.(JSON.stringify(progress));
     };
     const completeCourse = () => {
-      if (courseCompleted) return;
       courseCompleted = true;
-      persistProgress();
-      scorm?.setCompleted?.();
+      try { localStorage.setItem(storageKey, JSON.stringify({ current, completed: true })); } catch {}
+      return scorm?.setCompleted?.() ?? false;
     };
     const showQuestion = (index) => {
       if (!slides.length) return;
@@ -372,7 +378,6 @@ import { courseData } from "../data/course";
             feedback.replaceChildren(feedbackLabel, document.createTextNode(feedbackText));
             feedback.className = `assessment-feedback ${correct ? "is-correct" : "is-incorrect"}`;
           }
-          if (correct && slide === slides[slides.length - 1]) completeCourse();
         });
       });
     });
@@ -388,15 +393,6 @@ import { courseData } from "../data/course";
     }, { rootMargin: "-20% 0px -65%", threshold: [0.05, 0.3, 0.6] });
     document.querySelectorAll("[data-nav-section]").forEach((section) => observer.observe(section));
 
-    const completionTarget = document.querySelector(".course-footer");
-    if (completionTarget) {
-      const completionObserver = new IntersectionObserver((entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        completeCourse();
-        completionObserver.disconnect();
-      }, { threshold: 0.5 });
-      completionObserver.observe(completionTarget);
-    }
-    if (courseCompleted) scorm?.setCompleted?.();
+    courseReturn?.addEventListener("click", completeCourse);
   </script>
 </CourseLayout>

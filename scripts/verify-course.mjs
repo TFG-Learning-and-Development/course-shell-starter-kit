@@ -60,7 +60,7 @@ try {
     if (!response?.ok()) errors.push(`${viewport.name} returned HTTP ${response?.status() ?? "unknown"}`);
 
     const title = await page.title();
-    if (title !== "Adidas Adistar Quick Course") errors.push(`${viewport.name} has unexpected title: ${title}`);
+    if (title !== "Adidas Adistar") errors.push(`${viewport.name} has unexpected title: ${title}`);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     if (overflow) errors.push(`${viewport.name} has horizontal page overflow`);
@@ -148,12 +148,62 @@ try {
       await toggle.click();
     }
 
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    if (await page.evaluate(() => window.scrollY === 0)) {
+      errors.push(`${viewport.name} page did not scroll before testing the back-to-top control`);
+    }
+    await page.locator(".back-to-top").click();
+    try {
+      await page.waitForFunction(() => window.scrollY === 0, undefined, { timeout: 2000 });
+    } catch {
+      errors.push(`${viewport.name} back-to-top control did not return the page to the top`);
+    }
+
     if (process.env.VERIFY_SCREENSHOTS === "true") {
       await page.screenshot({ path: `.verification-${viewport.name}.png`, fullPage: true });
     }
 
     await page.close();
   }
+
+  const lmsPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await lmsPage.addInitScript(() => {
+    const calls = [];
+    const values = {
+      "cmi.core.lesson_status": "not attempted",
+      "cmi.core.total_time": "0000:00:00.00",
+    };
+    window.__lmsCalls = calls;
+    window.API = {
+      LMSInitialize(value) { calls.push(["LMSInitialize", value]); return "true"; },
+      LMSGetValue(element) { calls.push(["LMSGetValue", element]); return values[element] ?? ""; },
+      LMSSetValue(element, value) { calls.push(["LMSSetValue", element, value]); values[element] = value; return "true"; },
+      LMSCommit(value) { calls.push(["LMSCommit", value]); return "true"; },
+      LMSFinish(value) { calls.push(["LMSFinish", value]); return "true"; },
+    };
+  });
+  lmsPage.on("pageerror", (error) => errors.push(`SCORM footer page error: ${error.message}`));
+  await lmsPage.goto(baseUrl, { waitUntil: "networkidle" });
+  await lmsPage.evaluate(() => {
+    window.__lmsCalls.length = 0;
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+  await lmsPage.waitForTimeout(100);
+  const statusBeforeFooterClick = await lmsPage.evaluate(() => window.__lmsCalls.some(
+    ([method, element, value]) => method === "LMSSetValue" && element === "cmi.core.lesson_status" && value === "completed",
+  ));
+  if (statusBeforeFooterClick) errors.push("course completed before the footer return control was clicked");
+
+  await lmsPage.locator(".course-return").click();
+  const footerResult = await lmsPage.evaluate(() => ({ calls: window.__lmsCalls, hash: window.location.hash }));
+  const completedIndex = footerResult.calls.findIndex(
+    ([method, element, value]) => method === "LMSSetValue" && element === "cmi.core.lesson_status" && value === "completed",
+  );
+  const commitIndex = footerResult.calls.findIndex(([method], index) => method === "LMSCommit" && index > completedIndex);
+  if (completedIndex < 0) errors.push("footer return control did not set the SCORM lesson status to completed");
+  if (commitIndex < 0) errors.push("footer return control did not commit after setting the completed status");
+  if (footerResult.hash !== "#top") errors.push("footer return control did not preserve its existing navigation");
+  await lmsPage.close();
 } finally {
   await browser.close();
   if (server) await new Promise((resolve) => server.close(resolve));

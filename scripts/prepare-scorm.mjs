@@ -1,9 +1,12 @@
 import { copyFile, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import vm from "node:vm";
+import { deflateRawSync } from "node:zlib";
 
 const root = process.cwd();
 const dist = path.join(root, "dist");
+const packageName = "adidas-adistar.zip";
+const packagePath = path.join(root, packageName);
 const schemaDirectory = path.join(root, "scripts", "scorm-1.2-schemas");
 const schemaFiles = [
   "adlcp_rootv1p2.xsd",
@@ -58,7 +61,7 @@ function manifestFor(files) {
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="ADIDAS_ADISTAR_QUICK_COURSE_SCORM_12"
+<manifest identifier="ADIDAS_ADISTAR_SCORM_12"
   version="1.0"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
@@ -70,9 +73,9 @@ function manifestFor(files) {
   </metadata>
   <organizations default="ADISTAR_ORG">
     <organization identifier="ADISTAR_ORG">
-      <title>Adidas Adistar Quick Course</title>
+      <title>Adidas Adistar</title>
       <item identifier="ADISTAR_ITEM" identifierref="ADISTAR_RESOURCE">
-        <title>Adidas Adistar Quick Course</title>
+        <title>Adidas Adistar</title>
       </item>
     </organization>
   </organizations>
@@ -83,6 +86,78 @@ ${fileEntries}
   </resources>
 </manifest>
 `;
+}
+
+const crcTable = Array.from({ length: 256 }, (_unused, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) value = (value >>> 1) ^ ((value & 1) ? 0xedb88320 : 0);
+  return value >>> 0;
+});
+
+function crc32(data) {
+  let checksum = 0xffffffff;
+  for (const byte of data) checksum = (checksum >>> 8) ^ crcTable[(checksum ^ byte) & 0xff];
+  return (checksum ^ 0xffffffff) >>> 0;
+}
+
+function dosTimestamp(date) {
+  const year = Math.max(1980, date.getFullYear());
+  return {
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+    date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+  };
+}
+
+async function createZip(outputPath, files) {
+  const localParts = [];
+  const centralParts = [];
+  const timestamp = dosTimestamp(new Date());
+  let offset = 0;
+
+  for (const file of files) {
+    const name = Buffer.from(file, "utf8");
+    const data = await readFile(path.join(dist, ...file.split("/")));
+    const compressed = deflateRawSync(data, { level: 9 });
+    const checksum = crc32(data);
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0x0800, 6);
+    localHeader.writeUInt16LE(8, 8);
+    localHeader.writeUInt16LE(timestamp.time, 10);
+    localHeader.writeUInt16LE(timestamp.date, 12);
+    localHeader.writeUInt32LE(checksum, 14);
+    localHeader.writeUInt32LE(compressed.length, 18);
+    localHeader.writeUInt32LE(data.length, 22);
+    localHeader.writeUInt16LE(name.length, 26);
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0x0800, 8);
+    centralHeader.writeUInt16LE(8, 10);
+    centralHeader.writeUInt16LE(timestamp.time, 12);
+    centralHeader.writeUInt16LE(timestamp.date, 14);
+    centralHeader.writeUInt32LE(checksum, 16);
+    centralHeader.writeUInt32LE(compressed.length, 20);
+    centralHeader.writeUInt32LE(data.length, 24);
+    centralHeader.writeUInt16LE(name.length, 28);
+    centralHeader.writeUInt32LE(offset, 42);
+
+    localParts.push(localHeader, name, compressed);
+    centralParts.push(centralHeader, name);
+    offset += localHeader.length + name.length + compressed.length;
+  }
+
+  const centralDirectory = Buffer.concat(centralParts);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(centralDirectory.length, 12);
+  end.writeUInt32LE(offset, 16);
+  await writeFile(outputPath, Buffer.concat([...localParts, centralDirectory, end]));
 }
 
 function referencedPaths(content, extension) {
@@ -214,4 +289,6 @@ if (!lmsCalls.some(([method]) => method === "LMSCommit")) throw new Error("SCORM
 if (!lmsCalls.some(([method]) => method === "LMSFinish")) throw new Error("SCORM finish validation failed");
 if (lmsCalls.some((call) => /score|mastery|passed|failed/i.test(call.join(" ")))) throw new Error("SCORM wrapper emitted score or pass/fail data");
 
-console.log(JSON.stringify({ files: files.length, launch: "index.html", manifest: "imsmanifest.xml" }, null, 2));
+await createZip(packagePath, files);
+
+console.log(JSON.stringify({ files: files.length, launch: "index.html", manifest: "imsmanifest.xml", package: packageName }, null, 2));

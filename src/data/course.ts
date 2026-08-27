@@ -5,8 +5,8 @@ export type AssessmentQuestion = { scenario: string; question: string; options: 
 
 export const courseData = {
   meta: {
-    title: "Adidas Adistar Quick Course",
-    description: "This quick course helps Totalsports store employees recommend Adidas Adistar running shoes for maximum cushioning, comfort, and support over longer distances.",
+    title: "Adidas Adistar",
+    description: "This course helps Totalsports store employees recommend Adidas Adistar running shoes for maximum cushioning, comfort, and support over longer distances.",
   },
   nav: [
     { id: "overview", label: "Overview" },
@@ -17,7 +17,7 @@ export const courseData = {
     { id: "activity", label: "Activity" },
   ],
   welcome: {
-    title: "Adidas Adistar Quick Course",
+    title: "Adidas Adistar",
     text: "The Adidas Adistar range is designed for Customers who want maximum cushioning for longer distance running. This course will help you identify what the Customer needs, choose the right Adistar shoe, and explain the recommendation with confidence.",
     image: "/images/adistar/hero-adistar.png",
     imageAlt: "A white and green Adidas Adistar running shoe shown with its outsole.",

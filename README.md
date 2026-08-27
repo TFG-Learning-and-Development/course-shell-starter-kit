@@ -1,4 +1,4 @@
-# Adidas Adistar Quick Course
+# Adidas Adistar
 
 An Astro learning experience covering the Adidas Adistar distance-running range,
 with responsive interactions, progress persistence, and SCORM 1.2 support.
