@@ -1,5 +1,5 @@
 {
-  "name": "adidas-adistar",
+  "name": "champion-at-tfg-course",
   "type": "module",
   "version": "0.0.1",
   "engines": {
@@ -11,8 +11,7 @@
     "prepare:scorm": "node scripts/prepare-scorm.mjs",
     "preview": "astro preview",
     "verify": "node scripts/verify-course.mjs",
-    "astro": "astro",
-    "pdf": "node scripts/generate-pdf.mjs"
+    "astro": "astro"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",

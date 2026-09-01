@@ -5,7 +5,7 @@ import { deflateRawSync } from "node:zlib";
 
 const root = process.cwd();
 const dist = path.join(root, "dist");
-const packageName = "adidas-adistar.zip";
+const packageName = "champion-at-tfg.zip";
 const packagePath = path.join(root, packageName);
 const schemaDirectory = path.join(root, "scripts", "scorm-1.2-schemas");
 const schemaFiles = [
@@ -61,7 +61,7 @@ function manifestFor(files) {
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="ADIDAS_ADISTAR_SCORM_12"
+<manifest identifier="CHAMPION_AT_TFG_SCORM_12"
   version="1.0"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
   xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
@@ -71,16 +71,16 @@ function manifestFor(files) {
     <schema>ADL SCORM</schema>
     <schemaversion>1.2</schemaversion>
   </metadata>
-  <organizations default="ADISTAR_ORG">
-    <organization identifier="ADISTAR_ORG">
-      <title>Adidas Adistar</title>
-      <item identifier="ADISTAR_ITEM" identifierref="ADISTAR_RESOURCE">
-        <title>Adidas Adistar</title>
+  <organizations default="CHAMPION_ORG">
+    <organization identifier="CHAMPION_ORG">
+      <title>Champion at TFG: The Brand Worth Talking About</title>
+      <item identifier="CHAMPION_ITEM" identifierref="CHAMPION_RESOURCE">
+        <title>Champion at TFG: The Brand Worth Talking About</title>
       </item>
     </organization>
   </organizations>
   <resources>
-    <resource identifier="ADISTAR_RESOURCE" type="webcontent" adlcp:scormtype="sco" href="index.html">
+    <resource identifier="CHAMPION_RESOURCE" type="webcontent" adlcp:scormtype="sco" href="index.html">
 ${fileEntries}
     </resource>
   </resources>

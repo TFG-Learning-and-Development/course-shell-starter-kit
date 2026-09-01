@@ -1,7 +1,7 @@
-# Adidas Adistar
+# Champion at TFG: The Brand Worth Talking About
 
-An Astro learning experience covering the Adidas Adistar distance-running range,
-with responsive interactions, progress persistence, and SCORM 1.2 support.
+A responsive Astro learning experience introducing Champion’s heritage, values,
+Customer messages, and The Original Sportswear Brand™ positioning.
 
 ## Commands
 
@@ -12,5 +12,5 @@ npm run preview
 npm run prepare:scorm
 ```
 
-Course copy is kept in `src/data/course.ts` and the supplied course imagery is stored
-under `public/images/adistar`.
+Approved course copy and structured learning data are kept in `src/data/course.ts`.
+Production imagery is stored under `public/assets/champion`.

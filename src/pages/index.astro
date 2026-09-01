@@ -1,14 +1,19 @@
 ---
-import CourseLayout from "../layouts/CourseLayout.astro";
-import CourseMark from "../components/CourseMark.astro";
+import BrandMatch from "../components/BrandMatch.astro";
+import ChampionLogo from "../components/ChampionLogo.astro";
+import ConversationCard from "../components/ConversationCard.astro";
+import HeritageCard from "../components/HeritageCard.astro";
 import { courseData } from "../data/course";
+import CourseLayout from "../layouts/CourseLayout.astro";
 ---
 
 <CourseLayout title={courseData.meta.title} description={courseData.meta.description}>
   <div class="course-page">
     <header class="site-header" id="top">
       <nav class="course-nav container" aria-label="Course sections">
-        <a class="brand-link" href="#overview"><CourseMark /></a>
+        <a class="brand-link" href="#overview" aria-label="Champion course overview">
+          <ChampionLogo light />
+        </a>
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="course-links">
           <span class="sr-only">Toggle course navigation</span>
           <span></span><span></span><span></span>
@@ -22,242 +27,107 @@ import { courseData } from "../data/course";
     </header>
 
     <main id="main-content">
-      <div class="hero-stage">
-        <section class="hero container" id="overview" data-nav-section>
-          <div class="hero-copy">
-            <h1>{courseData.welcome.title}</h1>
-            <p>{courseData.welcome.text}</p>
-          </div>
-          <div class="hero-image-wrap">
-            <img src={courseData.welcome.image} alt={courseData.welcome.imageAlt} />
-          </div>
-        </section>
-      </div>
-
-      <section class="customer-moment container section-block" id="customer-moment" data-nav-section>
-        <div class="section-heading">
-          <h2>{courseData.customerMoment.title}</h2>
-          <p>{courseData.customerMoment.text}</p>
-          <p>{courseData.customerMoment.clue}</p>
-        </div>
-        <p class="pill-callout">{courseData.customerMoment.takeaway}</p>
-      </section>
-
-      <section class="product-basics section-block" id="product-basics" data-nav-section>
-        <div class="container section-heading">
-          <h2>{courseData.basics.title}</h2>
-          <p>{courseData.basics.intro}</p>
-        </div>
-        <div class="basics-grid container">
-          <div class="recommendation-layout">
-            <div class="runner-panel">
-              <img class="runner-athlete" src={courseData.basics.runnerImage} alt={courseData.basics.runnerAlt} />
-            </div>
-            <div class="recommendations-panel">
-              <p>{courseData.basics.recommendationLead}</p>
-              <ul>
-                {courseData.basics.recommendations.map((item) => <li>{item}</li>)}
-              </ul>
-            </div>
-          </div>
-          <div class="benefits-copy">
-            <h3>{courseData.basics.benefitsTitle}</h3>
-            <p>{courseData.basics.benefits}</p>
-          </div>
-          <img class="benefits-image" src={courseData.basics.benefitsImage} alt={courseData.basics.benefitsAlt} />
-        </div>
-      </section>
-
-      <section class="range-section section-block" id="product-range" data-nav-section>
-        <div class="container section-heading">
-          <h2>Product Range</h2>
-          <h3>{courseData.range.title}</h3>
-          <p>{courseData.range.intro}</p>
-        </div>
-        <div class="container range-grid" role="list">
-          {courseData.range.cards.map((card) => (
-            <article class="range-card" role="listitem">
-              <button
-                class="range-card-toggle"
-                type="button"
-                aria-pressed="false"
-                aria-label={`Show details for ${card.option}`}
-                data-product-option={card.option}
-              >
-                <span class="range-card-inner">
-                  <span class="range-card-face range-card-front" aria-hidden="false">
-                    <img src={card.image} alt={card.alt} />
-                    <span class="range-card-title">{courseData.range.needs[card.option]}</span>
-                  </span>
-                  <span class="range-card-face range-card-back" aria-hidden="true">
-                    <span class="range-card-detail">
-                      <span class="range-card-product-name">{card.option}</span>
-                    </span>
-                    <span class="range-card-detail">
-                      <strong>Simple recommendation cue</strong>
-                      <span>{card.cue}</span>
-                    </span>
-                  </span>
-                </span>
-              </button>
-            </article>
+      <section class="hero-section container" id="overview" data-nav-section>
+        <div class="hero-copy">
+          <h1>{courseData.overview.title}</h1>
+          {courseData.overview.paragraphs.map((paragraph, index) => (
+            <p>{index === 0 ? <Fragment set:html={paragraph.replace("The Brand Worth Talking About.", "<strong>The Brand Worth Talking About.</strong>")} /> : paragraph}</p>
           ))}
-        </div>
-        <div class="technology container">
-          <div class="section-heading technology-heading">
-            <h3>{courseData.technology.title}</h3>
-            <p>{courseData.technology.intro}</p>
-          </div>
-          <div class="technology-grid">
-            <div class="technology-visual">
-              <img src={courseData.technology.image} alt={courseData.technology.imageAlt} />
-              {courseData.technology.items.map((item, index) => (
-                <button
-                  class:list={["hotspot", `hotspot--${index + 1}`, index === 0 && "is-active"]}
-                  type="button"
-                  data-technology={index}
-                  aria-label={`Show ${item.feature}`}
-                >{item.hotspot}</button>
-              ))}
-            </div>
-            <div class="technology-accordion">
-              {courseData.technology.items.map((item, index) => (
-                <article class:list={["technology-item", index === 0 && "is-open"]} data-technology-item={index}>
-                  <button class="technology-trigger" type="button" aria-expanded={index === 0 ? "true" : "false"}>
-                    <span>{item.hotspot}</span><span class="sr-only">Feature: </span>{item.feature}
-                  </button>
-                  <div class="technology-detail" hidden={index !== 0}>
-                    <div><strong>Benefit</strong><p>{item.benefit}</p></div>
-                    <div class="selling-phrase"><strong>Say it like this</strong><p>{item.phrase}</p></div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="selling-section section-block" id="how-to-sell" data-nav-section>
-        <div class="container section-heading">
-          <h2>How to Sell</h2>
-          <h3>{courseData.selling.title}</h3>
-          <p>{courseData.selling.intro}</p>
-        </div>
-        <div class="container flow-grid">
-          {courseData.selling.steps.map((step, index) => (
-            <article class="flow-card">
-              <h3>{step.title}</h3>
-              <p>{step.text}</p>
-              {index < courseData.selling.steps.length - 1 && (
-                <span class="flow-arrow" aria-hidden="true">
-                  <svg viewBox="0 0 64 32" focusable="false">
-                    <path d="M3 16H52M43 6L54 16L43 26" />
-                  </svg>
-                </span>
-              )}
-            </article>
-          ))}
-        </div>
-        <p class="container pill-callout example-recommendation">{courseData.selling.example}</p>
-
-        <div class="scenario container">
-          <div class="section-heading scenario-heading">
-            <h3>{courseData.scenario.title}</h3>
-            <p>{courseData.scenario.intro}</p>
-          </div>
-          <div class="conversation customer-line">
-            <span class="conversation-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64" focusable="false">
-                <path d="M21 25v-5c0-9 5-14 12-14s12 5 12 14v5M24 18c3 1 7-1 10-5 2 3 5 5 9 5v11c0 7-4 12-10 12s-10-5-10-12V18zM19 56v-7c0-5 4-8 9-9l5 5 5-5c5 1 9 4 9 9v7H19zM15 24v11h5M50 24v11h-5" />
-              </svg>
-            </span>
-            <div class="conversation-content">
-              <strong>Customer</strong>
-              <p>{courseData.scenario.customer.replace("Customer says: ", "")}</p>
-            </div>
-          </div>
-          <div class="conversation employee-line">
-            <div class="conversation-content">
-              <strong>Store Employee</strong>
-              <p>{courseData.scenario.employee.replace("Store employee says: ", "")}</p>
-            </div>
-            <span class="conversation-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64" focusable="false">
-                <path d="M22 20c1-9 5-13 11-13s10 4 11 13M24 18c3 1 7-1 10-5 2 3 5 5 9 5v11c0 7-4 12-10 12s-10-5-10-12V18zM18 56v-8c0-5 4-8 10-9l5 6 5-6c6 1 10 4 10 9v8H18zM15 25v10h6M51 25v10h-6M38 48h7v5h-7z" />
-              </svg>
-            </span>
-          </div>
-
-          <div class="branching-activity">
-            <div class="branch-headings" aria-hidden="true"><span>Ask</span><span>Match</span><span>Recommend</span></div>
-            {courseData.scenario.branches.map((branch, index) => (
-              <div class:list={["branch-row", index === 0 && "is-selected"]} data-branch={index}>
-                <button class="branch-ask" type="button" aria-pressed={index === 0 ? "true" : "false"}>{branch.ask}</button>
-                <div class="branch-connector" aria-hidden="true"></div>
-                <div class="branch-match">{branch.match}</div>
-                <div class="branch-connector" aria-hidden="true"></div>
-                <div class="branch-recommend">
-                  {index === 0 ? (
-                    <span class="branch-shoe-pair">
-                      <span class="branch-shoe-option">
-                        <span class="branch-pair-image"><img src="/images/adistar/adistar-charge-white.png" alt="A white Adidas Adistar Charge running shoe." /></span>
-                        <span>Adistar Charge</span>
-                      </span>
-                      <span class="branch-shoe-divider" aria-hidden="true"></span>
-                      <span class="branch-shoe-option">
-                        <span class="branch-pair-image"><img src="/images/adistar/adistar-neutral.png" alt="A neutral-coloured Adidas Adistar 4 running shoe." /></span>
-                        <span>Adistar 4</span>
-                      </span>
-                    </span>
-                  ) : (
-                    <>
-                      <span class="branch-shoe"><img src={branch.image} alt={branch.alt} /></span>
-                      <span class="branch-product-label">{index === 1 ? "Adistar 4" : "Adistar Charge"}</span>
-                    </>
-                  )}
-                  <span class="sr-only">{branch.recommend}</span>
-                </div>
+          <div class="learning-journey" aria-label="Champion learning journey">
+            {courseData.overview.journey.map((step, index) => (
+              <div class="journey-step">
+                <span>Step {index + 1}</span>
+                <strong>{step}</strong>
               </div>
             ))}
           </div>
         </div>
+        <div class="hero-visual" aria-label="Champion sportswear models">
+          <img class="hero-model hero-model--woman" src="/assets/champion/champion-hero-woman.png" alt="Woman wearing a grey Champion hoodie and joggers." />
+          <img class="hero-model hero-model--man" src="/assets/champion/champion-hero-man.png" alt="Man wearing a black Champion T-shirt." />
+        </div>
       </section>
 
-      <section class="assessment-section section-block" id="activity" data-nav-section>
-        <div class="container assessment-shell">
-          <div class="assessment-heading">
-            <h2>{courseData.assessment.title}</h2>
-            <p>{courseData.assessment.intro}</p>
-            <p>{courseData.assessment.instruction}</p>
+      <section class="course-panel meet-section container" id="meet-champion" data-nav-section>
+        <div class="meet-copy">
+          <h2>{courseData.meet.title}</h2>
+          <p>{courseData.meet.statement}</p>
+          <p>{courseData.meet.history}</p>
+          <h3>{courseData.meet.lead}</h3>
+          <ul>
+            {courseData.meet.points.map((point) => <li>{point}</li>)}
+          </ul>
+        </div>
+        <img class="meet-editorial" src="/assets/champion/champion-its-in-the-name.png" alt="Champion archive campaign reading ‘It’s in the name’ beside people wearing Reverse Weave hoodies." />
+      </section>
+
+      <section class="course-panel why-section container" id="why-champion" data-nav-section>
+        <div class="section-heading">
+          <h2>{courseData.why.title}</h2>
+          <p>{courseData.why.text}</p>
+        </div>
+        <h3>{courseData.why.videoLabel}</h3>
+        <div class="video-placeholder">
+          <video
+            controls
+            preload="none"
+            poster="/assets/champion/champion-video-placeholder.png"
+            aria-label="Champion has arrived at TFG video"
+          >
+            <source src="/assets/champion/champion-has-arrived-at-tfg.mp4" type="video/mp4" />
+            Your browser does not support embedded video.
+          </video>
+        </div>
+      </section>
+
+      <section class="heritage-section" id="champion-heritage" data-nav-section>
+        <div class="container heritage-inner">
+          <div class="section-heading section-heading--light">
+            <p class="section-kicker">Since 1919</p>
+            <h2>{courseData.heritage.title}</h2>
+            <p>{courseData.heritage.intro}</p>
+            <h3>{courseData.heritage.timelineLabel}</h3>
           </div>
-          <div class="assessment-stage" aria-live="polite">
-            {courseData.assessment.questions.map((question, questionIndex) => (
-              <article class:list={["assessment-slide", questionIndex !== 0 && "is-hidden"]} data-question={questionIndex}>
-                <div class="assessment-question">
-                  <p><strong>Scenario {questionIndex + 1}:</strong> {question.scenario.replace(/^Scenario(?: \d+)?:\s*/, "")}</p>
-                  <strong>{question.question}</strong>
-                  <div class="assessment-feedback" aria-live="polite"></div>
-                </div>
-                <div class="assessment-options">
-                  {question.options.map((option, optionIndex) => (
-                    <button
-                      type="button"
-                      data-option={optionIndex}
-                      data-correct={optionIndex === question.correctIndex ? "true" : "false"}
-                      data-feedback={question.feedback}
-                    >
-                      <strong>{String.fromCharCode(65 + optionIndex)}.</strong> {option}
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
+          <div class="heritage-grid">
+            {courseData.heritage.milestones.map((milestone) => <HeritageCard milestone={milestone} />)}
           </div>
-          <div class="assessment-controls">
-            <span class="question-count">Question <strong>1</strong> of {courseData.assessment.questions.length}</span>
-            <button type="button" class="assessment-prev" aria-label="Previous question">&#8249;</button>
-            <button type="button" class="assessment-next" aria-label="Next question">&#8250;</button>
+          <div class="heritage-download">
+            <p>
+              Download the <a href="/assets/champion/legacy-of-champions.pdf" download="Legacy-of-Champions.pdf">PDF</a> to learn more.
+            </p>
           </div>
+        </div>
+      </section>
+
+      <section class="course-panel dna-section container" id="brand-dna" data-nav-section>
+        <div class="section-heading">
+          <h2>{courseData.brandDna.title}</h2>
+          <p>{courseData.brandDna.intro}</p>
+        </div>
+        <h3 class="activity-title">{courseData.brandDna.activityTitle}</h3>
+        <BrandMatch values={courseData.brandDna.values} />
+      </section>
+
+      <section class="course-panel knowledge-section container" id="champion-knowledge" data-nav-section>
+        <div class="section-heading">
+          <h2>{courseData.knowledge.title}</h2>
+          <p>{courseData.knowledge.intro}</p>
+          <h3>{courseData.knowledge.examplesLabel}</h3>
+        </div>
+        <div class="conversation-grid">
+          {courseData.knowledge.examples.map((example) => <ConversationCard example={example} />)}
+        </div>
+      </section>
+
+      <section class="closing-section container" id="closing">
+        <div class="closing-brand">
+          <ChampionLogo />
+        </div>
+        <div class="closing-copy">
+          <h2>{courseData.closing.title}</h2>
+          {courseData.closing.paragraphs.map((paragraph, index) => (
+            <p>{index === 0 ? <Fragment set:html={paragraph.replace("Champion at TFG: The Brand Worth Talking About.", "<strong>Champion at TFG: The Brand Worth Talking About.</strong>")} /> : paragraph}</p>
+          ))}
         </div>
       </section>
     </main>
@@ -266,133 +136,102 @@ import { courseData } from "../data/course";
       <span aria-hidden="true"></span>
       <a class="course-return" href={courseData.footer.url}>{courseData.footer.button} <span aria-hidden="true">&#8250;</span></a>
     </footer>
-    <a class="back-to-top" href="#top" aria-label="Back to top">&#8593;</a>
+    <a class="back-to-top" href="#top" aria-label="Back to top">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 7-7 7 7M5 19l7-7 7 7" /></svg>
+    </a>
   </div>
 
   <script>
-    const storageKey = "adidas-adistar-course-progress-v1";
+    type SavedProgress = {
+      currentSection?: string;
+      completed?: boolean;
+      revealedHeritage?: string[];
+    };
+
+    const storageKey = "champion-at-tfg-course-progress-v1";
     const scorm = (window as any).CourseSCORM;
-    const navToggle = document.querySelector(".nav-toggle");
-    const links = document.querySelector(".course-links");
-    const courseReturn = document.querySelector(".course-return");
-    const backToTop = document.querySelector(".back-to-top");
+    const navToggle = document.querySelector<HTMLButtonElement>(".nav-toggle");
+    const links = document.querySelector<HTMLElement>(".course-links");
+    const courseReturn = document.querySelector<HTMLAnchorElement>(".course-return");
+    const backToTop = document.querySelector<HTMLAnchorElement>(".back-to-top");
+    const sectionLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>(".course-links a"));
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-nav-section]"));
+    let savedProgress: SavedProgress = {};
+
+    try { savedProgress = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch {}
+    if (!savedProgress.currentSection) {
+      try { savedProgress = JSON.parse(scorm?.getSuspendData?.() || "{}"); } catch {}
+    }
+    savedProgress.revealedHeritage ??= [];
+
+    const persistProgress = () => {
+      const serialized = JSON.stringify(savedProgress);
+      try { localStorage.setItem(storageKey, serialized); } catch {}
+      scorm?.setSuspendData?.(serialized);
+    };
+
+    const completeCourse = () => {
+      savedProgress.completed = true;
+      persistProgress();
+      return scorm?.setCompleted?.() ?? false;
+    };
+
+    const setBackToTopVisibility = () => backToTop?.classList.toggle("is-visible", window.scrollY > 500);
+    window.addEventListener("scroll", setBackToTopVisibility, { passive: true });
+    setBackToTopVisibility();
+
     backToTop?.addEventListener("click", (event) => {
       event.preventDefault();
       const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
       window.scrollTo({ top: 0, left: 0, behavior });
     });
+
     navToggle?.addEventListener("click", () => {
       const open = navToggle.getAttribute("aria-expanded") === "true";
       navToggle.setAttribute("aria-expanded", String(!open));
       links?.classList.toggle("is-open", !open);
     });
-    links?.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => {
+
+    sectionLinks.forEach((link) => link.addEventListener("click", () => {
       navToggle?.setAttribute("aria-expanded", "false");
-      links.classList.remove("is-open");
+      links?.classList.remove("is-open");
     }));
 
-    document.querySelectorAll(".range-card-toggle").forEach((card) => {
-      card.addEventListener("click", () => {
-        const flipped = card.getAttribute("aria-pressed") !== "true";
-        card.setAttribute("aria-pressed", String(flipped));
-        card.classList.toggle("is-flipped", flipped);
-        card.setAttribute("aria-label", `${flipped ? "Show product" : "Show details"} for ${card.dataset.productOption || "Adistar option"}`);
-        card.querySelector(".range-card-front")?.setAttribute("aria-hidden", String(flipped));
-        card.querySelector(".range-card-back")?.setAttribute("aria-hidden", String(!flipped));
+    document.querySelectorAll<HTMLElement>("[data-heritage-card]").forEach((card) => {
+      const id = card.dataset.heritageCard || "";
+      const trigger = card.querySelector<HTMLButtonElement>(".heritage-trigger");
+      const detail = card.querySelector<HTMLElement>(".heritage-detail");
+      const label = card.querySelector<HTMLElement>(".heritage-prompt-label");
+      const setOpen = (open: boolean) => {
+        card.classList.toggle("is-open", open);
+        trigger?.setAttribute("aria-expanded", String(open));
+        if (detail) detail.hidden = !open;
+        if (label) label.textContent = open ? "Hide story" : "Reveal story";
+      };
+      setOpen(savedProgress.revealedHeritage?.includes(id) ?? false);
+      trigger?.addEventListener("click", () => {
+        const open = trigger.getAttribute("aria-expanded") !== "true";
+        setOpen(open);
+        const revealed = new Set(savedProgress.revealedHeritage);
+        open ? revealed.add(id) : revealed.delete(id);
+        savedProgress.revealedHeritage = [...revealed];
+        persistProgress();
       });
     });
 
-    const showTechnology = (index) => {
-      document.querySelectorAll(".technology-item").forEach((item, itemIndex) => {
-        const open = itemIndex === index;
-        item.classList.toggle("is-open", open);
-        item.querySelector(".technology-trigger")?.setAttribute("aria-expanded", String(open));
-        const detail = item.querySelector(".technology-detail");
-        if (detail instanceof HTMLElement) detail.hidden = !open;
-      });
-      document.querySelectorAll(".hotspot").forEach((hotspot) => {
-        hotspot.classList.toggle("is-active", Number(hotspot.getAttribute("data-technology")) === index);
-      });
-    };
-    document.querySelectorAll(".technology-trigger, .hotspot").forEach((control) => {
-      control.addEventListener("click", () => {
-        const item = control.closest("[data-technology-item]");
-        const index = Number(item?.getAttribute("data-technology-item") ?? control.getAttribute("data-technology"));
-        showTechnology(index);
-      });
-    });
-
-    document.querySelectorAll(".branch-ask").forEach((button) => {
-      button.addEventListener("click", () => {
-        const row = button.closest(".branch-row");
-        document.querySelectorAll(".branch-row").forEach((item) => item.classList.toggle("is-selected", item === row));
-        document.querySelectorAll(".branch-ask").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
-      });
-    });
-
-    const slides = Array.from(document.querySelectorAll(".assessment-slide"));
-    const count = document.querySelector(".question-count strong");
-    const previous = document.querySelector(".assessment-prev");
-    const next = document.querySelector(".assessment-next");
-    let current = 0;
-    let savedProgress: { current?: number; completed?: boolean } = {};
-    try { savedProgress = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch {}
-    if (!Number.isInteger(savedProgress.current)) {
-      try { savedProgress = JSON.parse(scorm?.getSuspendData?.() || "{}"); } catch {}
-    }
-    if (Number.isInteger(savedProgress.current) && slides.length) {
-      current = Math.min(Math.max(savedProgress.current ?? 0, 0), slides.length - 1);
-    }
-    let courseCompleted = Boolean(savedProgress.completed);
-
-    const persistProgress = () => {
-      const progress = { current, completed: courseCompleted };
-      try { localStorage.setItem(storageKey, JSON.stringify(progress)); } catch {}
-      scorm?.setSuspendData?.(JSON.stringify(progress));
-    };
-    const completeCourse = () => {
-      courseCompleted = true;
-      try { localStorage.setItem(storageKey, JSON.stringify({ current, completed: true })); } catch {}
-      return scorm?.setCompleted?.() ?? false;
-    };
-    const showQuestion = (index) => {
-      if (!slides.length) return;
-      current = Math.min(Math.max(index, 0), slides.length - 1);
-      slides.forEach((slide, slideIndex) => slide.classList.toggle("is-hidden", slideIndex !== current));
-      if (count) count.textContent = String(current + 1);
-      if (previous instanceof HTMLButtonElement) previous.disabled = current === 0;
-      if (next instanceof HTMLButtonElement) next.disabled = current === slides.length - 1;
-      persistProgress();
-    };
-    slides.forEach((slide) => {
-      slide.querySelectorAll("[data-option]").forEach((option) => {
-        option.addEventListener("click", () => {
-          const feedback = slide.querySelector(".assessment-feedback");
-          const correct = option.getAttribute("data-correct") === "true";
-          slide.querySelectorAll("[data-option]").forEach((item) => item.classList.remove("selected", "correct", "incorrect"));
-          option.classList.add("selected", correct ? "correct" : "incorrect");
-          if (feedback) {
-            const feedbackText = (option.getAttribute("data-feedback") || "").replace(/^Feedback:\s*/, "");
-            const feedbackLabel = document.createElement("strong");
-            feedbackLabel.textContent = "Feedback: ";
-            feedback.replaceChildren(feedbackLabel, document.createTextNode(feedbackText));
-            feedback.className = `assessment-feedback ${correct ? "is-correct" : "is-incorrect"}`;
-          }
-        });
-      });
-    });
-    previous?.addEventListener("click", () => showQuestion(current - 1));
-    next?.addEventListener("click", () => showQuestion(current + 1));
-    showQuestion(current);
-
-    const sectionLinks = Array.from(document.querySelectorAll(".course-links a"));
     const observer = new IntersectionObserver((entries) => {
-      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
       if (!visible) return;
-      sectionLinks.forEach((link) => link.classList.toggle("active", link.getAttribute("href") === `#${visible.target.id}`));
+      sectionLinks.forEach((link) => {
+        link.classList.toggle("active", link.getAttribute("href") === `#${visible.target.id}`);
+      });
+      savedProgress.currentSection = visible.target.id;
+      persistProgress();
     }, { rootMargin: "-20% 0px -65%", threshold: [0.05, 0.3, 0.6] });
-    document.querySelectorAll("[data-nav-section]").forEach((section) => observer.observe(section));
 
+    sections.forEach((section) => observer.observe(section));
     courseReturn?.addEventListener("click", completeCourse);
   </script>
 </CourseLayout>

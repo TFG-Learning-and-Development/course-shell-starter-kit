@@ -6,7 +6,7 @@ interface Props {
   description?: string;
 }
 
-const { title, description = "Adidas Adistar" } = Astro.props as Props;
+const { title, description = "Champion at TFG learning course." } = Astro.props as Props;
 ---
 
 <!doctype html>
@@ -15,8 +15,7 @@ const { title, description = "Adidas Adistar" } = Astro.props as Props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#009FD7" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#2f347f" />
     <script is:inline src="/course-runtime.js"></script>
     <title>{title}</title>
   </head>
