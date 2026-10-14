@@ -57,7 +57,7 @@ img, svg { display: block; max-width: 100%; }
 .nav-toggle[aria-expanded="true"] > span:nth-of-type(3) { opacity: 0; }
 .nav-toggle[aria-expanded="true"] > span:nth-of-type(4) { transform: translateY(-0.38rem) rotate(-45deg); }
 
-.hero { min-height: 36rem; display: grid; align-items: center; color: white; background: linear-gradient(125deg, var(--ink), #263746 70%, #314958); overflow: hidden; }
+.hero { min-height: 36rem; display: grid; align-items: center; color: white; background: linear-gradient(125deg, var(--ink), var(--course-accent-strong) 70%, var(--course-accent)); overflow: hidden; }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(16rem, 0.65fr); align-items: center; gap: clamp(3rem, 8vw, 8rem); padding-block: 6rem; }
 .hero-copy { max-width: 46rem; }
 .hero h1 { max-width: 13ch; margin-bottom: 1.25rem; font-size: var(--course-type-display-lg-size); font-weight: var(--course-type-display-weight); line-height: var(--course-type-display-line-height); letter-spacing: -0.035em; }

@@ -19,6 +19,10 @@ This repository is a reusable Astro course shell.
 
 ## Mandatory course standards
 
+### Theme inheritance
+
+- Theme the Overview/hero accent styling through the shared `--course-accent` and `--course-accent-strong` tokens so every course inherits its supplied visual-board palette automatically. Do not retain hard-coded starter accent colours in the hero or change its approved layout and typography when applying a course theme.
+
 ### Typography
 
 - Every new course must inherit the existing shared typography system through `CourseLayout.astro` and its shared styles.
@@ -31,6 +35,7 @@ This repository is a reusable Astro course shell.
 ### Completion tracking
 
 - Configure completion tracking during every course build; a separate tracking request is not required.
+- Theme every course's progress UI through the shared `--course-accent` token so it inherits the supplied visual-board accent automatically. Do not hard-code a separate progress colour; keep the unfilled track neutral and verify readable contrast.
 - Replace the starter milestones with course-specific requirements derived from the storyboard and the content actually implemented.
 - Connect required content, videos and interactions to the existing VIEW, WATCH, attempt-based SUBMIT or COMPLETE, and EXPLORE triggers as appropriate.
 - Preserve the approved tracking rules and defaults, including VIEW dwell behavior, WATCH unique-range thresholds, attempt-based completion, EXPLORE completion, equal weighting, persistence, restoration and reset.

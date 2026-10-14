@@ -275,9 +275,9 @@ const config = { milestones, storageKey };
   .course-progress__header p { margin: 0 0 4px; color: #435261; font-size: 13px; line-height: 1.2; }
   .course-progress__header strong { font-size: 22px; line-height: 1.1; }
   .course-progress__close { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: #e1e5e7; color: #002546; font-size: 26px; line-height: 1; cursor: pointer; }
-  .course-progress__close:hover, .course-progress__close:focus-visible { background: #bf90fa; outline: 2px solid #002546; outline-offset: 2px; }
+  .course-progress__close:hover, .course-progress__close:focus-visible { background: var(--course-accent); color: #fff; outline: 2px solid var(--focus-on-light); outline-offset: 2px; }
   .course-progress__bar { height: 10px; margin: 20px 0 18px; overflow: hidden; border-radius: 999px; background: #e1e5e7; }
-  .course-progress__bar span { display: block; width: 0; height: 100%; border-radius: inherit; background: #bf90fa; transition: width 0.2s ease; }
+  .course-progress__bar span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--course-accent); transition: width 0.2s ease; }
   .course-progress__list-group + .course-progress__list-group { margin-top: 14px; }
   .course-progress__list-group h2 { margin: 0 0 5px; color: #071827; font-size: 16px; line-height: 1.15; }
   .course-progress__list-group ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }

@@ -71,7 +71,9 @@ Configure course colours in the `:root` block at the top of `src/styles/global.c
 
 Hover, active and focus states have separate tokens so they remain distinguishable. Do not assume one accent works on every surface: contrast-check the light- and dark-surface focus colours independently after changing the theme.
 
-The footer uses `--course-accent` as its background, so update that token from the supplied mood board or design board and confirm the fixed white footer text remains readable.
+The Overview/hero gradient must inherit `--course-accent-strong` and `--course-accent` for every course. Replace those shared tokens from the supplied mood board or design board; do not add hard-coded starter accent colours or alter the approved hero layout and typography as part of theming.
+
+The footer uses `--course-accent` as its background, so update that token from the supplied mood board or design board and confirm the fixed white footer text remains readable. The Activity progress bar and related accent states must use the same shared token for every course; do not add a separate progress colour. Keep the unfilled track neutral and contrast-check the filled state against it.
 
 After editing content, run `npm run build` and `npm run verify`. The verifier creates and removes a temporary component-fixture build, exercises the documented desktop, tablet and mobile sizes, and checks navigation, keyboard interactions, component containment, storage isolation, failed resources, console errors and horizontal overflow.
 

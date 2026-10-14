@@ -80,6 +80,10 @@ Completion configuration, activity attributes, events, persistence, reset behavi
 
 Do not hard-code course colours inside components. Configure the custom properties at the top of `src/styles/global.css`, and contrast-check every replacement against the surface where it appears. The light- and dark-surface focus tokens are intentionally separate.
 
+The Overview/hero gradient must use `--course-accent-strong` and `--course-accent` so it follows the supplied visual-board palette without layout or typography changes. Do not add starter-specific hero accent values.
+
+The Activity progress UI must inherit the supplied visual-board accent through `--course-accent`, including its filled bar and related accent states. Keep the unfilled track neutral, verify readable contrast, and do not introduce a component-specific progress colour.
+
 ## Typography primitives
 
 `TypeText`, `TextLayout`, `QuoteBlock`, `StatisticBlock` and `DefinitionList` live in `src/components/typography/`. Use them for semantic type roles and controlled text composition rather than adding one-off font sizes to a course component. Configure the course scale in `src/styles/course-typography.css`; see [`typography.md`](typography.md) for the role table, variants, examples and override hierarchy.

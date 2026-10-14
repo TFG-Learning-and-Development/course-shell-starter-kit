@@ -227,6 +227,22 @@ try {
       await progressTrigger.press("Enter");
       const progressPanel = page.locator("[data-progress-panel]");
       fail((await progressTrigger.getAttribute("aria-expanded")) !== "true" || !(await progressPanel.isVisible()), `${label} progress dropdown did not open from the keyboard`);
+      const progressTheme = await page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.style.backgroundColor = "var(--course-accent)";
+        document.body.append(probe);
+        const accent = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return {
+          accent,
+          fill: getComputedStyle(document.querySelector("[data-progress-bar-fill]")).backgroundColor,
+          track: getComputedStyle(document.querySelector("[data-progress-bar]")).backgroundColor,
+        };
+      });
+      fail(progressTheme.fill !== progressTheme.accent, `${label} progress fill does not inherit the course accent token`);
+      fail(progressTheme.track === progressTheme.accent, `${label} unfilled progress track is not neutral`);
+      await page.locator("[data-progress-close]").hover();
+      fail((await page.locator("[data-progress-close]").evaluate((element) => getComputedStyle(element).backgroundColor)) !== progressTheme.accent, `${label} progress close hover does not inherit the course accent token`);
       const panelGeometry = await progressPanel.evaluate((element) => {
         const rect = element.getBoundingClientRect();
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, scrollable: element.scrollHeight > element.clientHeight };
@@ -411,10 +427,24 @@ try {
           const style = getComputedStyle(document.documentElement);
           return Object.fromEntries(["--surface", "--ink", "--course-accent", "--course-accent-strong", "--focus-on-light", "--focus-on-dark"].map((name) => [name, style.getPropertyValue(name).trim()]));
         });
+        const heroTheme = await page.evaluate(() => {
+          const root = document.documentElement;
+          const hero = document.querySelector(".hero");
+          const initial = getComputedStyle(hero).backgroundImage;
+          root.style.setProperty("--course-accent", "#010203");
+          const accentChanged = getComputedStyle(hero).backgroundImage !== initial;
+          root.style.removeProperty("--course-accent");
+          root.style.setProperty("--course-accent-strong", "#040506");
+          const accentStrongChanged = getComputedStyle(hero).backgroundImage !== initial;
+          root.style.removeProperty("--course-accent-strong");
+          return { accentChanged, accentStrongChanged };
+        });
+        fail(!heroTheme.accentChanged || !heroTheme.accentStrongChanged, "Overview hero does not respond to both shared course accent tokens");
         fail(contrast(tokens["--focus-on-light"], tokens["--surface"]) < 3, "light-surface focus token has less than 3:1 contrast against the light surface");
         fail(contrast(tokens["--focus-on-dark"], tokens["--ink"]) < 3, "dark-surface focus token has less than 3:1 contrast against the navigation/footer surface");
         fail(contrast(tokens["--focus-on-dark"], tokens["--course-accent-strong"]) < 3, "dark-surface focus token has less than 3:1 contrast against the course accent surface");
         fail(contrast("#ffffff", tokens["--course-accent"]) < 4.5, "fixed footer text has less than 4.5:1 contrast against the course accent background");
+        fail(contrast(tokens["--course-accent"], "#e1e5e7") < 3, "course accent has less than 3:1 contrast against the neutral progress track");
 
         if (!(await page.locator(".course-links").isVisible())) await page.locator(".nav-toggle").click();
 
@@ -668,5 +698,5 @@ if (errors.length) {
   console.error(errors.join("\n"));
   process.exitCode = 1;
 } else {
-  console.log(`Starter verification passed: ${viewports.map(labelFor).join(", ")}; responsive navigation including five-link desktop and mobile layouts, progress dropdown, anchors, active-section and back-to-top capsule behaviour; keyboard and reduced-motion support; completion types, persistence, reset and storage isolation; theme focus contrast; typography roles and overrides; a 200% browser-zoom equivalent; and reusable component fixtures at ${componentViewports.map(labelFor).join(", ")}.`);
+  console.log(`Starter verification passed: ${viewports.map(labelFor).join(", ")}; responsive navigation including five-link desktop and mobile layouts, progress dropdown, anchors, active-section and back-to-top capsule behaviour; keyboard and reduced-motion support; completion types, persistence, reset and storage isolation; shared-token hero and progress theming plus theme focus contrast; typography roles and overrides; a 200% browser-zoom equivalent; and reusable component fixtures at ${componentViewports.map(labelFor).join(", ")}.`);
 }
