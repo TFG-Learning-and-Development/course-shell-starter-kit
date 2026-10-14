@@ -1,7 +1,9 @@
 ---
 import InfoCallout from "../components/InfoCallout.astro";
+import CourseProgress from "../components/CourseProgress.astro";
 import SectionHeading from "../components/SectionHeading.astro";
 import { courseData } from "../data/course";
+import { completionMilestones, completionSettings } from "../data/course-completion";
 import CourseLayout from "../layouts/CourseLayout.astro";
 ---
 
@@ -11,25 +13,26 @@ import CourseLayout from "../layouts/CourseLayout.astro";
       <nav class="course-nav container" aria-label="Course sections">
         <a class="brand-link" href="#overview" aria-label={courseData.brand.homeLabel}>
           <span class="brand-mark" aria-hidden="true">CS</span>
-          <span>{courseData.brand.label}</span>
         </a>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="course-links">
-          <span class="sr-only">Open course navigation</span>
-          <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
-        </button>
         <div class="course-links" id="course-links">
           {courseData.navigation.map((item, index) => (
             <a href={`#${item.id}`} aria-current={index === 0 ? "location" : undefined}>{item.label}</a>
           ))}
         </div>
+        <div class="nav-actions">
+          <CourseProgress milestones={completionMilestones} storageKey={completionSettings.storageKey} />
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="course-links">
+            <span class="sr-only">Open course navigation</span>
+            <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+          </button>
+        </div>
       </nav>
     </header>
 
     <main id="main-content">
-      <section class="hero" id="overview" data-nav-section>
+      <section class="hero" id="overview" data-nav-section data-completion-id="overview">
         <div class="container hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow">{courseData.hero.eyebrow}</p>
             <h1>{courseData.hero.title}</h1>
             <p class="hero-description">{courseData.hero.description}</p>
             <a class="button-link" href="#content">{courseData.hero.actionLabel}</a>
@@ -40,9 +43,9 @@ import CourseLayout from "../layouts/CourseLayout.astro";
         </div>
       </section>
 
-      <section class="section content-section" id="content" data-nav-section>
+      <section class="section content-section" id="content" data-nav-section data-completion-id="content">
         <div class="container content-grid">
-          <SectionHeading eyebrow={courseData.content.eyebrow} title={courseData.content.title} align="left" />
+          <SectionHeading title={courseData.content.title} align="left" />
           <div class="prose">
             {courseData.content.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
             <InfoCallout title={courseData.content.calloutTitle} tone="pale">
@@ -52,10 +55,9 @@ import CourseLayout from "../layouts/CourseLayout.astro";
         </div>
       </section>
 
-      <section class="section interaction-section" id="interaction" data-nav-section>
+      <section class="section interaction-section" id="interaction" data-nav-section data-completion-id="interaction">
         <div class="container interaction-layout">
           <SectionHeading
-            eyebrow={courseData.interaction.eyebrow}
             title={courseData.interaction.title}
             intro={courseData.interaction.introduction}
             light
@@ -85,7 +87,7 @@ import CourseLayout from "../layouts/CourseLayout.astro";
     <footer class="course-footer">
       <div class="container footer-inner">
         <p>{courseData.footer.text}</p>
-        <a href="#top">Back to top</a>
+        <a href="#top"><span>Back to top</span><span aria-hidden="true">↑</span></a>
       </div>
     </footer>
   </div>
@@ -103,13 +105,15 @@ import CourseLayout from "../layouts/CourseLayout.astro";
 
     navToggle?.addEventListener("click", () => {
       const willOpen = navToggle.getAttribute("aria-expanded") !== "true";
+      if (willOpen) window.dispatchEvent(new CustomEvent("course-progress:close-panel"));
       navToggle.setAttribute("aria-expanded", String(willOpen));
       navToggle.querySelector(".sr-only")?.replaceChildren(willOpen ? "Close course navigation" : "Open course navigation");
       courseLinks?.classList.toggle("is-open", willOpen);
     });
 
     navLinks.forEach((link) => link.addEventListener("click", closeNavigation));
-    const mobileNavigation = window.matchMedia("(max-width: 48rem)");
+    window.addEventListener("course-progress:panel-open", closeNavigation);
+    const mobileNavigation = window.matchMedia("(max-width: 64rem)");
     mobileNavigation.addEventListener("change", (event) => {
       if (!event.matches) closeNavigation();
     });
@@ -131,6 +135,7 @@ import CourseLayout from "../layouts/CourseLayout.astro";
       if (labelNode && label) labelNode.textContent = label;
       if (iconNode) iconNode.textContent = isOpen ? "+" : "−";
       if (revealResponse) revealResponse.hidden = isOpen;
+      window.dispatchEvent(new CustomEvent("course-progress:complete", { detail: { activityId: "interaction" } }));
     });
 
     if ("IntersectionObserver" in window) {

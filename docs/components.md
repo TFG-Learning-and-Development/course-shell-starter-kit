@@ -2,18 +2,19 @@
 
 The starter uses custom Astro components and shared rules in `src/styles/global.css`. Import only the components a course needs. The transferred typography primitives and their full property reference are documented in [`typography.md`](typography.md).
 
+All course components and interactions must use the inherited typography system; do not introduce component-local type scales or font families. Completion tracking must be configured as part of every course build and connected to each required component using the contracts in [`completion-tracking.md`](completion-tracking.md).
+
 ## `SectionHeading`
 
 Properties:
 
 - `title` (required string): heading text.
-- `eyebrow` (optional string): short label above the heading.
 - `intro` (optional string): introductory paragraph.
 - `light` (optional boolean, default `false`): light text for dark surfaces.
 - `align` (`"left" | "center"`, default `"center"`): text alignment.
 
 ```astro
-<SectionHeading eyebrow="Section 01" title="A descriptive heading" intro="A concise introduction." align="left" />
+<SectionHeading title="A descriptive heading" intro="A concise introduction." align="left" />
 ```
 
 ## `InfoCallout`
@@ -70,6 +71,10 @@ Properties:
   ]}
 />
 ```
+
+## `CourseProgress` and `ExploreGroup`
+
+Completion configuration, activity attributes, events, persistence, reset behaviour, and examples for sections, videos, questions, matching, accordions, cards, and tabs are documented in [`completion-tracking.md`](completion-tracking.md).
 
 ## Shared theme
 

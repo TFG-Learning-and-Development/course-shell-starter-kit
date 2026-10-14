@@ -12,6 +12,11 @@ const verificationFixture = {
           entrypoint: new URL('./scripts/fixtures/ComponentFixture.astro', import.meta.url),
           prerender: true,
         });
+        injectRoute({
+          pattern: '/__verify-completion',
+          entrypoint: new URL('./scripts/fixtures/CompletionFixture.astro', import.meta.url),
+          prerender: true,
+        });
       }
     },
   },

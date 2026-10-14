@@ -27,14 +27,12 @@ export const courseData = {
     { id: "interaction", label: "Interaction" },
   ],
   hero: {
-    eyebrow: "Course starter",
     title: "Add your course title here",
     description:
       "Use this neutral shell as the starting point for a focused, accessible learning experience.",
     actionLabel: "Start learning",
   },
   content: {
-    eyebrow: "Section 01",
     title: "Add a clear section heading",
     paragraphs: [
       "Replace this placeholder with concise learning content. Keep each section focused on one idea and use descriptive headings so learners can scan the page easily.",
@@ -45,7 +43,6 @@ export const courseData = {
       "Keep course copy in this data file where practical, and place course-specific media in the public assets folder.",
   },
   interaction: {
-    eyebrow: "Example interaction",
     title: "Reveal a key point",
     introduction:
       "This simple disclosure demonstrates the starter’s interaction styling and keyboard behaviour.",
@@ -56,6 +53,6 @@ export const courseData = {
       "Replace this neutral response with a short summary that reinforces the section’s main learning point.",
   },
   footer: {
-    text: "Course shell · Replace with your organisation or course footer",
+    text: "Return to People Connect to continue",
   },
 } as const;
