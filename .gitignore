@@ -1,26 +1,28 @@
-# build output
-dist/
-# generated types
-.astro/
-
 # dependencies
 node_modules/
 
-# logs
+# generated Astro output and caches
+dist/
+.astro/
+
+# local environment files
+.env
+.env.*
+!.env.example
+
+# generated SCORM output (integration is pending)
+*.zip
+scorm-output/
+
+# local verification output and logs
+.verification-*.png
+.verification-dist/
+debug.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-debug.log
-.verification-*.png
 
-
-# environment variables
-.env
-.env.production
-
-# macOS-specific files
+# editor and operating-system files
 .DS_Store
-
-# jetbrains setting folder
 .idea/

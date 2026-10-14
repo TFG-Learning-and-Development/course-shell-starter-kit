@@ -1,237 +1,165 @@
 ---
-import BrandMatch from "../components/BrandMatch.astro";
-import ChampionLogo from "../components/ChampionLogo.astro";
-import ConversationCard from "../components/ConversationCard.astro";
-import HeritageCard from "../components/HeritageCard.astro";
+import InfoCallout from "../components/InfoCallout.astro";
+import SectionHeading from "../components/SectionHeading.astro";
 import { courseData } from "../data/course";
 import CourseLayout from "../layouts/CourseLayout.astro";
 ---
 
 <CourseLayout title={courseData.meta.title} description={courseData.meta.description}>
-  <div class="course-page">
-    <header class="site-header" id="top">
+  <div class="course-page" id="top">
+    <header class="site-header">
       <nav class="course-nav container" aria-label="Course sections">
-        <a class="brand-link" href="#overview" aria-label="Champion course overview">
-          <ChampionLogo light />
+        <a class="brand-link" href="#overview" aria-label={courseData.brand.homeLabel}>
+          <span class="brand-mark" aria-hidden="true">CS</span>
+          <span>{courseData.brand.label}</span>
         </a>
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="course-links">
-          <span class="sr-only">Toggle course navigation</span>
-          <span></span><span></span><span></span>
+          <span class="sr-only">Open course navigation</span>
+          <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
         </button>
         <div class="course-links" id="course-links">
-          {courseData.nav.map((item, index) => (
-            <a href={`#${item.id}`} class:list={[index === 0 && "active"]}>{item.label}</a>
+          {courseData.navigation.map((item, index) => (
+            <a href={`#${item.id}`} aria-current={index === 0 ? "location" : undefined}>{item.label}</a>
           ))}
         </div>
       </nav>
     </header>
 
     <main id="main-content">
-      <section class="hero-section container" id="overview" data-nav-section>
-        <div class="hero-copy">
-          <h1>{courseData.overview.title}</h1>
-          {courseData.overview.paragraphs.map((paragraph, index) => (
-            <p>{index === 0 ? <Fragment set:html={paragraph.replace("The Brand Worth Talking About.", "<strong>The Brand Worth Talking About.</strong>")} /> : paragraph}</p>
-          ))}
-          <div class="learning-journey" aria-label="Champion learning journey">
-            {courseData.overview.journey.map((step, index) => (
-              <div class="journey-step">
-                <span>Step {index + 1}</span>
-                <strong>{step}</strong>
-              </div>
-            ))}
+      <section class="hero" id="overview" data-nav-section>
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">{courseData.hero.eyebrow}</p>
+            <h1>{courseData.hero.title}</h1>
+            <p class="hero-description">{courseData.hero.description}</p>
+            <a class="button-link" href="#content">{courseData.hero.actionLabel}</a>
           </div>
-        </div>
-        <div class="hero-visual" aria-label="Champion sportswear models">
-          <img class="hero-model hero-model--woman" src="/assets/champion/champion-hero-woman.png" alt="Woman wearing a grey Champion hoodie and joggers." />
-          <img class="hero-model hero-model--man" src="/assets/champion/champion-hero-man.png" alt="Man wearing a black Champion T-shirt." />
-        </div>
-      </section>
-
-      <section class="course-panel meet-section container" id="meet-champion" data-nav-section>
-        <div class="meet-copy">
-          <h2>{courseData.meet.title}</h2>
-          <p>{courseData.meet.statement}</p>
-          <p>{courseData.meet.history}</p>
-          <h3>{courseData.meet.lead}</h3>
-          <ul>
-            {courseData.meet.points.map((point) => <li>{point}</li>)}
-          </ul>
-        </div>
-        <img class="meet-editorial" src="/assets/champion/champion-its-in-the-name.png" alt="Champion archive campaign reading ‘It’s in the name’ beside people wearing Reverse Weave hoodies." />
-      </section>
-
-      <section class="course-panel why-section container" id="why-champion" data-nav-section>
-        <div class="section-heading">
-          <h2>{courseData.why.title}</h2>
-          <p>{courseData.why.text}</p>
-        </div>
-        <h3>{courseData.why.videoLabel}</h3>
-        <div class="video-placeholder">
-          <video
-            controls
-            preload="none"
-            poster="/assets/champion/champion-video-placeholder.png"
-            aria-label="Champion has arrived at TFG video"
-          >
-            <source src="/assets/champion/champion-has-arrived-at-tfg.mp4" type="video/mp4" />
-            Your browser does not support embedded video.
-          </video>
-        </div>
-      </section>
-
-      <section class="heritage-section" id="champion-heritage" data-nav-section>
-        <div class="container heritage-inner">
-          <div class="section-heading section-heading--light">
-            <p class="section-kicker">Since 1919</p>
-            <h2>{courseData.heritage.title}</h2>
-            <p>{courseData.heritage.intro}</p>
-            <h3>{courseData.heritage.timelineLabel}</h3>
-          </div>
-          <div class="heritage-grid">
-            {courseData.heritage.milestones.map((milestone) => <HeritageCard milestone={milestone} />)}
-          </div>
-          <div class="heritage-download">
-            <p>
-              Download the <a href="/assets/champion/legacy-of-champions.pdf" download="Legacy-of-Champions.pdf">PDF</a> to learn more.
-            </p>
+          <div class="hero-panel" aria-hidden="true">
+            <span>01</span><span>02</span><span>03</span>
           </div>
         </div>
       </section>
 
-      <section class="course-panel dna-section container" id="brand-dna" data-nav-section>
-        <div class="section-heading">
-          <h2>{courseData.brandDna.title}</h2>
-          <p>{courseData.brandDna.intro}</p>
-        </div>
-        <h3 class="activity-title">{courseData.brandDna.activityTitle}</h3>
-        <BrandMatch values={courseData.brandDna.values} />
-      </section>
-
-      <section class="course-panel knowledge-section container" id="champion-knowledge" data-nav-section>
-        <div class="section-heading">
-          <h2>{courseData.knowledge.title}</h2>
-          <p>{courseData.knowledge.intro}</p>
-          <h3>{courseData.knowledge.examplesLabel}</h3>
-        </div>
-        <div class="conversation-grid">
-          {courseData.knowledge.examples.map((example) => <ConversationCard example={example} />)}
+      <section class="section content-section" id="content" data-nav-section>
+        <div class="container content-grid">
+          <SectionHeading eyebrow={courseData.content.eyebrow} title={courseData.content.title} align="left" />
+          <div class="prose">
+            {courseData.content.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+            <InfoCallout title={courseData.content.calloutTitle} tone="pale">
+              <p>{courseData.content.callout}</p>
+            </InfoCallout>
+          </div>
         </div>
       </section>
 
-      <section class="closing-section container" id="closing">
-        <div class="closing-brand">
-          <ChampionLogo />
-        </div>
-        <div class="closing-copy">
-          <h2>{courseData.closing.title}</h2>
-          {courseData.closing.paragraphs.map((paragraph, index) => (
-            <p>{index === 0 ? <Fragment set:html={paragraph.replace("Champion at TFG: The Brand Worth Talking About.", "<strong>Champion at TFG: The Brand Worth Talking About.</strong>")} /> : paragraph}</p>
-          ))}
+      <section class="section interaction-section" id="interaction" data-nav-section>
+        <div class="container interaction-layout">
+          <SectionHeading
+            eyebrow={courseData.interaction.eyebrow}
+            title={courseData.interaction.title}
+            intro={courseData.interaction.introduction}
+            light
+            align="left"
+          />
+          <div class="reveal-example">
+            <p class="reveal-prompt">{courseData.interaction.prompt}</p>
+            <button
+              class="reveal-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="example-response"
+              data-open-label={courseData.interaction.actionLabel}
+              data-close-label={courseData.interaction.closeLabel}
+            >
+              <span>{courseData.interaction.actionLabel}</span>
+              <span aria-hidden="true">+</span>
+            </button>
+            <div class="reveal-response" id="example-response" hidden>
+              <p>{courseData.interaction.response}</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
 
-    <footer class="course-footer container">
-      <span aria-hidden="true"></span>
-      <a class="course-return" href={courseData.footer.url}>{courseData.footer.button} <span aria-hidden="true">&#8250;</span></a>
+    <footer class="course-footer">
+      <div class="container footer-inner">
+        <p>{courseData.footer.text}</p>
+        <a href="#top">Back to top</a>
+      </div>
     </footer>
-    <a class="back-to-top" href="#top" aria-label="Back to top">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 14 7-7 7 7M5 19l7-7 7 7" /></svg>
-    </a>
   </div>
 
   <script>
-    type SavedProgress = {
-      currentSection?: string;
-      completed?: boolean;
-      revealedHeritage?: string[];
-    };
-
-    const storageKey = "champion-at-tfg-course-progress-v1";
-    const scorm = (window as any).CourseSCORM;
     const navToggle = document.querySelector<HTMLButtonElement>(".nav-toggle");
-    const links = document.querySelector<HTMLElement>(".course-links");
-    const courseReturn = document.querySelector<HTMLAnchorElement>(".course-return");
-    const backToTop = document.querySelector<HTMLAnchorElement>(".back-to-top");
-    const sectionLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>(".course-links a"));
-    const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-nav-section]"));
-    let savedProgress: SavedProgress = {};
+    const courseLinks = document.querySelector<HTMLElement>(".course-links");
+    const navLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>(".course-links a"));
 
-    try { savedProgress = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch {}
-    if (!savedProgress.currentSection) {
-      try { savedProgress = JSON.parse(scorm?.getSuspendData?.() || "{}"); } catch {}
-    }
-    savedProgress.revealedHeritage ??= [];
-
-    const persistProgress = () => {
-      const serialized = JSON.stringify(savedProgress);
-      try { localStorage.setItem(storageKey, serialized); } catch {}
-      scorm?.setSuspendData?.(serialized);
+    const closeNavigation = () => {
+      navToggle?.setAttribute("aria-expanded", "false");
+      navToggle?.querySelector(".sr-only")?.replaceChildren("Open course navigation");
+      courseLinks?.classList.remove("is-open");
     };
-
-    const completeCourse = () => {
-      savedProgress.completed = true;
-      persistProgress();
-      return scorm?.setCompleted?.() ?? false;
-    };
-
-    const setBackToTopVisibility = () => backToTop?.classList.toggle("is-visible", window.scrollY > 500);
-    window.addEventListener("scroll", setBackToTopVisibility, { passive: true });
-    setBackToTopVisibility();
-
-    backToTop?.addEventListener("click", (event) => {
-      event.preventDefault();
-      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-      window.scrollTo({ top: 0, left: 0, behavior });
-    });
 
     navToggle?.addEventListener("click", () => {
-      const open = navToggle.getAttribute("aria-expanded") === "true";
-      navToggle.setAttribute("aria-expanded", String(!open));
-      links?.classList.toggle("is-open", !open);
+      const willOpen = navToggle.getAttribute("aria-expanded") !== "true";
+      navToggle.setAttribute("aria-expanded", String(willOpen));
+      navToggle.querySelector(".sr-only")?.replaceChildren(willOpen ? "Close course navigation" : "Open course navigation");
+      courseLinks?.classList.toggle("is-open", willOpen);
     });
 
-    sectionLinks.forEach((link) => link.addEventListener("click", () => {
-      navToggle?.setAttribute("aria-expanded", "false");
-      links?.classList.remove("is-open");
-    }));
+    navLinks.forEach((link) => link.addEventListener("click", closeNavigation));
+    const mobileNavigation = window.matchMedia("(max-width: 48rem)");
+    mobileNavigation.addEventListener("change", (event) => {
+      if (!event.matches) closeNavigation();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && navToggle?.getAttribute("aria-expanded") === "true") {
+        closeNavigation();
+        navToggle.focus();
+      }
+    });
 
-    document.querySelectorAll<HTMLElement>("[data-heritage-card]").forEach((card) => {
-      const id = card.dataset.heritageCard || "";
-      const trigger = card.querySelector<HTMLButtonElement>(".heritage-trigger");
-      const detail = card.querySelector<HTMLElement>(".heritage-detail");
-      const label = card.querySelector<HTMLElement>(".heritage-prompt-label");
-      const setOpen = (open: boolean) => {
-        card.classList.toggle("is-open", open);
-        trigger?.setAttribute("aria-expanded", String(open));
-        if (detail) detail.hidden = !open;
-        if (label) label.textContent = open ? "Hide story" : "Reveal story";
+    const revealButton = document.querySelector<HTMLButtonElement>(".reveal-button");
+    const revealResponse = document.querySelector<HTMLElement>(".reveal-response");
+    revealButton?.addEventListener("click", () => {
+      const isOpen = revealButton.getAttribute("aria-expanded") === "true";
+      revealButton.setAttribute("aria-expanded", String(!isOpen));
+      const label = isOpen ? revealButton.dataset.openLabel : revealButton.dataset.closeLabel;
+      const labelNode = revealButton.querySelector("span:first-child");
+      const iconNode = revealButton.querySelector("span:last-child");
+      if (labelNode && label) labelNode.textContent = label;
+      if (iconNode) iconNode.textContent = isOpen ? "+" : "−";
+      if (revealResponse) revealResponse.hidden = isOpen;
+    });
+
+    if ("IntersectionObserver" in window) {
+      const sections = document.querySelectorAll<HTMLElement>("[data-nav-section]");
+      const setActiveNavigation = (sectionId: string) => {
+        navLinks.forEach((link) => {
+          const active = link.hash === `#${sectionId}`;
+          if (active) link.setAttribute("aria-current", "location");
+          else link.removeAttribute("aria-current");
+        });
       };
-      setOpen(savedProgress.revealedHeritage?.includes(id) ?? false);
-      trigger?.addEventListener("click", () => {
-        const open = trigger.getAttribute("aria-expanded") !== "true";
-        setOpen(open);
-        const revealed = new Set(savedProgress.revealedHeritage);
-        open ? revealed.add(id) : revealed.delete(id);
-        savedProgress.revealedHeritage = [...revealed];
-        persistProgress();
-      });
-    });
-
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      sectionLinks.forEach((link) => {
-        link.classList.toggle("active", link.getAttribute("href") === `#${visible.target.id}`);
-      });
-      savedProgress.currentSection = visible.target.id;
-      persistProgress();
-    }, { rootMargin: "-20% 0px -65%", threshold: [0.05, 0.3, 0.6] });
-
-    sections.forEach((section) => observer.observe(section));
-    courseReturn?.addEventListener("click", completeCourse);
+      const setNavigationFromScrollPosition = () => {
+        if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+          const finalSection = sections.item(sections.length - 1);
+          if (finalSection) setActiveNavigation(finalSection.id);
+          return;
+        }
+        const readingLine = window.scrollY + window.innerHeight * 0.5;
+        const currentSection = Array.from(sections).reduce((current, section) => (
+          section.offsetTop <= readingLine ? section : current
+        ), sections.item(0));
+        if (currentSection) setActiveNavigation(currentSection.id);
+      };
+      const observer = new IntersectionObserver(() => {
+        setNavigationFromScrollPosition();
+      }, { rootMargin: "-25% 0px -60%", threshold: [0.05, 0.4] });
+      sections.forEach((section) => observer.observe(section));
+      window.addEventListener("scroll", setNavigationFromScrollPosition, { passive: true });
+      setNavigationFromScrollPosition();
+    }
   </script>
 </CourseLayout>

@@ -1,24 +1,26 @@
 {
-  "name": "champion-at-tfg-course",
+  "name": "astro-course-shell",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "private": true,
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "prepare:scorm": "node scripts/prepare-scorm.mjs",
     "preview": "astro preview",
     "verify": "node scripts/verify-course.mjs",
     "astro": "astro"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
-    "astro": "^6.1.7",
-    "tailwindcss": "^4.2.2"
+    "@tailwindcss/vite": "4.2.2",
+    "astro": "7.3.8",
+    "tailwindcss": "4.2.2"
   },
   "devDependencies": {
-    "playwright": "^1.59.1"
+    "@emnapi/core": "1.11.3",
+    "@emnapi/runtime": "1.11.3",
+    "playwright": "1.59.1"
   }
 }

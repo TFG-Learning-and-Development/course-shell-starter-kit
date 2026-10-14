@@ -1,0 +1,21 @@
+---
+import type { TextAlignment, TextSurface } from "./types";
+
+interface Props {
+  value: string;
+  label: string;
+  detail?: string;
+  align?: TextAlignment;
+  surface?: TextSurface;
+}
+
+const { value, label, detail, align = "left", surface = "none" } = Astro.props;
+---
+
+<dl class:list={["qc-statistic", `qc-statistic--align-${align}`, `qc-statistic--surface-${surface}`]}>
+  <div>
+    <dd>{value}</dd>
+    <dt>{label}</dt>
+    {detail && <p>{detail}</p>}
+  </div>
+</dl>

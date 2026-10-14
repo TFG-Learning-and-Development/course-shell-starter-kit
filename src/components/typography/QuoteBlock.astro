@@ -1,0 +1,19 @@
+---
+import type { TextFamily, TextSurface } from "./types";
+
+interface Props {
+  quote: string;
+  citation?: string;
+  source?: string;
+  variant?: "standard" | "pull" | "center" | "rule" | "surface";
+  family?: Extract<TextFamily, "sans" | "serif">;
+  surface?: TextSurface;
+}
+
+const { quote, citation, source, variant = "standard", family = "sans", surface = "none" } = Astro.props;
+---
+
+<blockquote class:list={["qc-quote", `qc-quote--${variant}`, `qc-quote--family-${family}`, `qc-quote--surface-${surface}`]}>
+  <p>{quote}</p>
+  {(citation || source) && <footer><cite>{citation}{citation && source && ", "}{source}</cite></footer>}
+</blockquote>

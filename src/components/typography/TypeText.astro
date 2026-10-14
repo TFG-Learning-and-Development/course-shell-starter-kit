@@ -1,0 +1,42 @@
+---
+import type { TextAlignment, TextElement, TextFamily, TextMeasure, TextTone, TextWeight, TypeRole } from "./types";
+
+interface Props {
+  as?: TextElement;
+  role?: TypeRole;
+  align?: TextAlignment;
+  measure?: TextMeasure;
+  family?: TextFamily;
+  weight?: TextWeight;
+  tone?: TextTone;
+  italic?: boolean;
+  class?: string;
+}
+
+const {
+  as: element = "p",
+  role = "body",
+  align = "left",
+  measure = "standard",
+  family = "sans",
+  weight,
+  tone = "default",
+  italic = false,
+  class: className,
+} = Astro.props;
+const Tag = element;
+---
+
+<Tag class:list={[
+  "qc-type",
+  `qc-type--${role}`,
+  `qc-type--align-${align}`,
+  `qc-type--measure-${measure}`,
+  `qc-type--family-${family}`,
+  weight && `qc-type--weight-${weight}`,
+  `qc-type--tone-${tone}`,
+  italic && "is-italic",
+  className,
+]}>
+  <slot />
+</Tag>

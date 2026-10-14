@@ -1,0 +1,35 @@
+---
+import type { TableColumn, TableRow } from "../data/course";
+
+interface Props {
+  id?: string;
+  columns: TableColumn[];
+  rows: TableRow[];
+  label: string;
+  tone?: "light" | "dark";
+}
+
+const { id = `table-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`, columns, rows, label, tone = "light" } = Astro.props as Props;
+const hintId = `${id}-scroll-hint`;
+---
+
+<div id={id} class:list={["responsive-table", `responsive-table--${tone}`]} role="region" aria-label={label} aria-describedby={hintId} tabindex="0">
+  <table>
+    <caption class="sr-only">{label}</caption>
+    <thead>
+      <tr>
+        {columns.map((column) => <th scope="col">{column.label}</th>)}
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row) => (
+        <tr>
+          {columns.map((column, index) => index === 0
+            ? <th scope="row">{row[column.key]}</th>
+            : <td>{row[column.key]}</td>)}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+<p class="table-scroll-hint" id={hintId}>Scroll horizontally to view the complete table.</p>

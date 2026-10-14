@@ -1,0 +1,22 @@
+---
+interface DefinitionItem {
+  term: string;
+  definition: string;
+}
+
+interface Props {
+  items: DefinitionItem[];
+  variant?: "stacked" | "split" | "grid";
+}
+
+const { items, variant = "stacked" } = Astro.props;
+---
+
+<dl class:list={["qc-definition-list", `qc-definition-list--${variant}`]}>
+  {items.map((item) => (
+    <div>
+      <dt>{item.term}</dt>
+      <dd>{item.definition}</dd>
+    </div>
+  ))}
+</dl>

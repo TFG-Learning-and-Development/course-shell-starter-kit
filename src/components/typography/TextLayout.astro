@@ -1,0 +1,19 @@
+---
+import type { TextBleed, TextLayoutKind, TextSpacing, TextSurface } from "./types";
+
+interface Props {
+  layout?: TextLayoutKind;
+  surface?: TextSurface;
+  spacing?: TextSpacing;
+  bleed?: TextBleed;
+  as?: "section" | "article" | "div" | "aside";
+  class?: string;
+}
+
+const { layout = "reading-standard", surface = "none", spacing = "standard", bleed = "none", as: element = "div", class: className } = Astro.props;
+const Tag = element;
+---
+
+<Tag class:list={["qc-text-layout", `qc-text-layout--${layout}`, `qc-text-layout--surface-${surface}`, `qc-text-layout--spacing-${spacing}`, `qc-text-layout--bleed-${bleed}`, className]}>
+  <slot />
+</Tag>

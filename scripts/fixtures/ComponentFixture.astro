@@ -1,0 +1,136 @@
+---
+import DialogueBlock from "../../src/components/DialogueBlock.astro";
+import InfoCallout from "../../src/components/InfoCallout.astro";
+import ResponsiveTable from "../../src/components/ResponsiveTable.astro";
+import SectionHeading from "../../src/components/SectionHeading.astro";
+import DefinitionList from "../../src/components/typography/DefinitionList.astro";
+import QuoteBlock from "../../src/components/typography/QuoteBlock.astro";
+import StatisticBlock from "../../src/components/typography/StatisticBlock.astro";
+import TextLayout from "../../src/components/typography/TextLayout.astro";
+import TypeText from "../../src/components/typography/TypeText.astro";
+import "../../src/styles/global.css";
+
+const columns = [
+  { key: "pattern", label: "Pattern" },
+  { key: "purpose", label: "Purpose" },
+  { key: "notes", label: "Implementation notes" },
+];
+const rows = [
+  {
+    pattern: "Responsive table",
+    purpose: "Keep structured information readable without widening the page.",
+    notes: "The table region scrolls independently when its columns need more room than the viewport provides.",
+  },
+  {
+    pattern: "Long-content check",
+    purpose: "Confirm that representative prose wraps inside the shared container.",
+    notes: "Course developers remain responsible for testing the actual copy, media and interaction labels used in their course.",
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Component verification fixture</title>
+  </head>
+  <body>
+    <main class="verification-fixture container">
+      <SectionHeading eyebrow="Fixture" title="Centred heading" intro="Short representative content." />
+      <SectionHeading eyebrow="Fixture" title="Left-aligned heading" align="left" />
+
+      <div class="verification-callouts">
+        <InfoCallout title="Pale callout" tone="pale"><p>Short content.</p></InfoCallout>
+        <InfoCallout title="Slate callout" tone="slate" icon={false}><p>A callout without an icon.</p></InfoCallout>
+        <InfoCallout title="Navy callout" tone="navy"><a href="#fixture-table">Focusable dark-surface content</a></InfoCallout>
+      </div>
+
+      <section id="fixture-table" aria-label="Table variants">
+        <ResponsiveTable id="fixture-table-light" label="Light table fixture" {columns} {rows} />
+        <ResponsiveTable id="fixture-table-dark" label="Dark table fixture" {columns} {rows} tone="dark" />
+      </section>
+
+      <DialogueBlock
+        label="Dialogue fixture"
+        speakerA={{ label: "Speaker A", text: "Can this component handle concise dialogue?" }}
+        speakerB={[
+          { label: "Speaker B", text: "Yes, and the verification fixture also checks a longer follow-up response." },
+          { label: "Follow-up", text: "This representative sentence is deliberately longer so wrapping, spacing and readability can be checked at narrow and wide viewport sizes without adding demonstration content to the learner-facing starter." },
+        ]}
+      />
+
+      <section class="verification-typography" aria-labelledby="typography-fixture-heading">
+        <h2 id="typography-fixture-heading">Typography primitives</h2>
+
+        <div class="verification-native-headings" aria-label="Native heading hierarchy">
+          <h1>Native heading level one</h1>
+          <h2>Native heading level two</h2>
+          <h3>Native heading level three</h3>
+          <h4>Native heading level four</h4>
+          <h5>Native heading level five</h5>
+          <h6>Native heading level six</h6>
+        </div>
+
+        <TextLayout layout="reading-standard" spacing="standard">
+          <TypeText as="p" role="eyebrow">Course context</TypeText>
+          <TypeText as="h3" role="heading-lg" class="verification-role-default">Semantic level three with a heading-large visual role</TypeText>
+          <TypeText as="p" role="lead">A lead introduces the learning point without replacing the document heading structure.</TypeText>
+          <div class="qc-text-layout__prose">
+            <TypeText as="p" role="body">Body copy uses the shared reading size, line height and standard measure.</TypeText>
+            <ul class="verification-list">
+              <li>Keep the action and its reason together.</li>
+              <li>Allow a longer learning point to wrap without clipping, overlap or an unexplained change in type size.</li>
+            </ul>
+            <TypeText as="p" role="body-compact" tone="muted">Compact supporting text remains an intentional secondary role.</TypeText>
+          </div>
+        </TextLayout>
+
+        <TextLayout layout="two-equal" surface="muted" spacing="spacious">
+          <TypeText as="p" role="heading-md" class="verification-role-heading-md">Default heading-medium role</TypeText>
+          <TypeText as="p" role="heading-md" weight="medium" class="verification-role-explicit-weight">Explicit medium weight</TypeText>
+        </TextLayout>
+
+        <div class="verification-local-override">
+          <TypeText as="p" role="heading-md" class="verification-role-local-override">Scoped custom-property override</TypeText>
+        </div>
+
+        <TextLayout layout="pull-quote" spacing="spacious">
+          <div class="qc-text-layout__prose">
+            <TypeText as="p" role="body">The main explanation remains first in source order and stacks before its supporting aside on narrow screens.</TypeText>
+          </div>
+          <aside class="qc-text-layout__aside">
+            <QuoteBlock quote="Readable defaults should make ordinary course content easy to compose." citation="Verification fixture" variant="rule" />
+          </aside>
+        </TextLayout>
+
+        <TextLayout layout="three" spacing="standard">
+          <QuoteBlock quote="Serif remains an explicit editorial option." family="serif" variant="pull" />
+          <StatisticBlock value="18px" label="Default body size" detail="Scales from the root font size." surface="accent" />
+          <DefinitionList variant="stacked" items={[
+            { term: "Narrow", definition: "A 42rem measure for detailed reading." },
+            { term: "Standard", definition: "A 54rem measure for normal course prose." },
+          ]} />
+        </TextLayout>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  body.verification-course-override {
+    --course-type-body-size: 1.25rem;
+    --course-type-heading-lg-size: clamp(2rem, 4vw, 3rem);
+  }
+  .verification-fixture { display: grid; gap: 2rem; padding-block: 2rem; }
+  .verification-callouts { display: grid; gap: 1rem; }
+  .verification-callouts .info-callout { margin-top: 0; }
+  .verification-fixture .responsive-table { margin-top: 1rem; }
+  .verification-fixture .responsive-table table { min-width: 42rem; }
+  .verification-fixture #fixture-table { min-width: 0; }
+  .verification-typography { display: grid; gap: 2rem; min-width: 0; }
+  .verification-native-headings { display: grid; gap: 0.75rem; }
+  .verification-native-headings > * { margin-bottom: 0; }
+  .verification-local-override { --course-type-heading-md-size: 2rem; }
+</style>

@@ -1,20 +1,26 @@
 // @ts-check
-import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 
-const astroPrerenderEntrypoint = fileURLToPath(
-  new URL('./node_modules/astro/dist/entrypoints/prerender.js', import.meta.url),
-);
+const verificationFixture = {
+  name: 'course-verification-fixture',
+  hooks: {
+    'astro:config:setup': ({ injectRoute }) => {
+      if (process.env.COURSE_VERIFY_COMPONENTS === '1') {
+        injectRoute({
+          pattern: '/__verify-components',
+          entrypoint: new URL('./scripts/fixtures/ComponentFixture.astro', import.meta.url),
+          prerender: true,
+        });
+      }
+    },
+  },
+};
 
 // https://astro.build/config
 export default defineConfig({
+  integrations: [verificationFixture],
   vite: {
     plugins: [tailwindcss()],
-    resolve: {
-      alias: {
-        'astro/entrypoints/prerender': astroPrerenderEntrypoint,
-      },
-    },
   },
 });
