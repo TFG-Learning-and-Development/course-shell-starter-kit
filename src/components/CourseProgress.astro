@@ -1,0 +1,295 @@
+---
+import type { CompletionMilestone } from "../data/course-completion";
+
+interface Props {
+  milestones: CompletionMilestone[];
+  storageKey: string;
+}
+
+const { milestones, storageKey } = Astro.props as Props;
+const config = { milestones, storageKey };
+---
+
+<div class="course-progress" data-course-progress>
+  <button
+    class="course-progress__trigger"
+    type="button"
+    data-progress-trigger
+    aria-label="Open activity progress (0% complete)"
+    aria-expanded="false"
+    aria-controls="course-progress-panel"
+  >
+    <span>Progress</span>
+    <strong data-progress-percent>0%</strong>
+  </button>
+
+  <aside class="course-progress__panel" id="course-progress-panel" aria-label="Activity progress" aria-hidden="true" data-progress-panel inert hidden>
+    <div class="course-progress__header">
+      <div>
+        <p>Activity progress</p>
+        <strong data-progress-value aria-live="polite">0% complete</strong>
+      </div>
+      <button class="course-progress__close" type="button" data-progress-close aria-label="Close activity progress">×</button>
+    </div>
+    <div class="course-progress__bar" role="progressbar" aria-label="Activity completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-progress-bar><span data-progress-bar-fill></span></div>
+    <div class="course-progress__list-group"><h2>Completed</h2><ul data-progress-completed></ul></div>
+    <div class="course-progress__list-group"><h2>Still to do</h2><ul data-progress-incomplete></ul></div>
+    <button class="course-progress__reset" type="button" data-progress-reset>Reset Progress</button>
+  </aside>
+
+  <script type="application/json" data-course-progress-config set:html={JSON.stringify(config)}></script>
+</div>
+
+<script>
+  type RangePair = [number, number];
+  type PersistedState = { completed: string[]; watchRanges: Record<string, RangePair[]>; explored: Record<string, string[]> };
+  type Milestone = { id: string; label: string; type: "view" | "watch" | "submit" | "explore" | "complete" | "optional"; targetId: string; required: boolean; threshold?: number };
+
+  document.querySelectorAll<HTMLElement>("[data-course-progress]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+
+    const configNode = root.querySelector<HTMLScriptElement>("[data-course-progress-config]");
+    const config = configNode?.textContent ? JSON.parse(configNode.textContent) : null;
+    if (!config) return;
+
+    const milestones = config.milestones as Milestone[];
+    const requiredMilestones = milestones.filter((milestone) => milestone.required);
+    const storageKey = String(config.storageKey || "astro-course-progress");
+    const defaultState = (): PersistedState => ({ completed: [], watchRanges: {}, explored: {} });
+    let state = defaultState();
+
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        state = {
+          completed: Array.isArray(parsed.completed) ? parsed.completed : [],
+          watchRanges: parsed.watchRanges && typeof parsed.watchRanges === "object" ? parsed.watchRanges : {},
+          explored: parsed.explored && typeof parsed.explored === "object" ? parsed.explored : {},
+        };
+      }
+    } catch {
+      state = defaultState();
+    }
+
+    const completed = new Set(state.completed.filter((id) => milestones.some((milestone) => milestone.id === id)));
+    const trigger = root.querySelector<HTMLButtonElement>("[data-progress-trigger]");
+    const panel = root.querySelector<HTMLElement>("[data-progress-panel]");
+    const closeButton = root.querySelector<HTMLButtonElement>("[data-progress-close]");
+    const resetButton = root.querySelector<HTMLButtonElement>("[data-progress-reset]");
+    const progressValue = root.querySelector<HTMLElement>("[data-progress-value]");
+    const barFill = root.querySelector<HTMLElement>("[data-progress-bar-fill]");
+    const bar = root.querySelector<HTMLElement>("[data-progress-bar]");
+    const completedList = root.querySelector<HTMLUListElement>("[data-progress-completed]");
+    const incompleteList = root.querySelector<HTMLUListElement>("[data-progress-incomplete]");
+
+    const milestoneFor = (id: string) => milestones.find((milestone) => milestone.id === id);
+    const targetFor = (milestone: Milestone) => document.getElementById(milestone.targetId);
+    milestones.forEach((milestone) => {
+      const target = targetFor(milestone);
+      if (!target) console.error(`[course-progress] Unresolved target "${milestone.targetId}" for milestone "${milestone.id}".`);
+      else if (target.dataset.completionId !== milestone.id) console.error(`[course-progress] Target "${milestone.targetId}" must declare data-completion-id="${milestone.id}".`);
+    });
+
+    const mergeRanges = (ranges: RangePair[]) => {
+      const clean = ranges.filter(([start, end]) => Number.isFinite(start) && Number.isFinite(end) && end > start).sort((a, b) => a[0] - b[0]);
+      const merged: RangePair[] = [];
+      for (const [start, end] of clean) {
+        const last = merged[merged.length - 1];
+        if (!last || start > last[1] + 0.25) merged.push([start, end]);
+        else last[1] = Math.max(last[1], end);
+      }
+      return merged;
+    };
+
+    const watchedFraction = (id: string, duration: number) => {
+      if (!Number.isFinite(duration) || duration <= 0) return 0;
+      return Math.min(1, mergeRanges(state.watchRanges[id] || []).reduce((total, [start, end]) => total + Math.max(0, end - start), 0) / duration);
+    };
+
+    const persist = () => {
+      state.completed = Array.from(completed);
+      try { window.localStorage.setItem(storageKey, JSON.stringify(state)); } catch { /* Session progress still works. */ }
+    };
+
+    const setPanelOpen = (isOpen: boolean, returnFocus = true) => {
+      if (!panel) return;
+      const wasOpen = panel.dataset.open === "true";
+      panel.dataset.open = String(isOpen);
+      panel.hidden = !isOpen;
+      panel.inert = !isOpen;
+      panel.setAttribute("aria-hidden", String(!isOpen));
+      trigger?.setAttribute("aria-expanded", String(isOpen));
+      if (isOpen) {
+        window.dispatchEvent(new CustomEvent("course-progress:panel-open"));
+        closeButton?.focus();
+      } else if (wasOpen && returnFocus) trigger?.focus();
+    };
+
+    const renderList = (list: HTMLUListElement | null, entries: Milestone[], isComplete: boolean) => {
+      if (!list) return;
+      list.replaceChildren();
+      entries.forEach((milestone) => {
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = `#${encodeURIComponent(milestone.targetId)}`;
+        link.dataset.progressTarget = milestone.targetId;
+        link.dataset.complete = String(isComplete);
+        link.textContent = `${isComplete ? "✓" : "→"} ${milestone.label}`;
+        link.addEventListener("click", () => setPanelOpen(false, false));
+        item.append(link);
+        list.append(item);
+      });
+    };
+
+    const render = () => {
+      const completeCount = requiredMilestones.filter((milestone) => completed.has(milestone.id)).length;
+      const percent = requiredMilestones.length === 0 ? 100 : Math.round((completeCount / requiredMilestones.length) * 100);
+      const value = `${percent}% complete`;
+      const percentNode = trigger?.querySelector("strong");
+      if (percentNode) percentNode.textContent = `${percent}%`;
+      trigger?.setAttribute("aria-label", `Open activity progress (${value})`);
+      if (progressValue) progressValue.textContent = value;
+      if (barFill) barFill.style.width = `${percent}%`;
+      bar?.setAttribute("aria-valuenow", String(percent));
+      renderList(completedList, requiredMilestones.filter((milestone) => completed.has(milestone.id)), true);
+      renderList(incompleteList, requiredMilestones.filter((milestone) => !completed.has(milestone.id)), false);
+    };
+
+    const markComplete = (id: string) => {
+      if (completed.has(id)) return;
+      completed.add(id);
+      persist();
+      render();
+    };
+
+    window.addEventListener("course-progress:request-restore", ((event: CustomEvent<{ activityId: string; apply?: (itemIds: string[]) => void }>) => {
+      const id = event.detail.activityId;
+      if (!milestoneFor(id)) return;
+      event.detail.apply?.(state.explored[id] || []);
+      window.dispatchEvent(new CustomEvent("course-progress:explore-state", { detail: { activityId: id, itemIds: state.explored[id] || [] } }));
+      window.dispatchEvent(new CustomEvent("course-progress:restore-complete", { detail: { activityId: id, complete: completed.has(id) } }));
+    }) as EventListener);
+
+    window.addEventListener("course-progress:explore", ((event: CustomEvent<{ activityId: string; itemId: string }>) => {
+      const { activityId, itemId } = event.detail;
+      const milestone = milestoneFor(activityId);
+      if (!milestone || milestone.type !== "explore" || !itemId) return;
+      const itemIds = new Set(state.explored[activityId] || []);
+      itemIds.add(itemId);
+      state.explored[activityId] = Array.from(itemIds);
+      const target = targetFor(milestone);
+      let requiredItems: string[] = [];
+      try { requiredItems = target ? JSON.parse(target.dataset.requiredItems || "[]") : []; } catch { console.error(`[course-progress] Invalid required-item data for "${activityId}".`); }
+      if (requiredItems.length > 0 && requiredItems.every((id) => itemIds.has(id))) markComplete(activityId);
+      persist();
+      window.dispatchEvent(new CustomEvent("course-progress:explore-state", { detail: { activityId, itemIds: state.explored[activityId] } }));
+    }) as EventListener);
+
+    window.addEventListener("course-progress:complete", ((event: CustomEvent<{ activityId: string }>) => {
+      if (milestoneFor(event.detail.activityId)) markComplete(event.detail.activityId);
+    }) as EventListener);
+
+    trigger?.addEventListener("click", () => setPanelOpen(panel?.dataset.open !== "true"));
+    closeButton?.addEventListener("click", () => setPanelOpen(false));
+    window.addEventListener("course-progress:close-panel", () => setPanelOpen(false, false));
+    document.addEventListener("pointerdown", (event) => {
+      if (panel?.dataset.open === "true" && !root.contains(event.target as Node)) setPanelOpen(false, false);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && panel?.dataset.open === "true") setPanelOpen(false);
+    });
+    window.matchMedia("(max-width: 64rem)").addEventListener("change", () => setPanelOpen(false, false));
+
+    resetButton?.addEventListener("click", () => {
+      completed.clear();
+      state = defaultState();
+      try { window.localStorage.removeItem(storageKey); } catch { /* In-memory state is still reset. */ }
+      document.querySelectorAll<HTMLVideoElement>("video[data-completion-id]").forEach((video) => { try { video.currentTime = 0; } catch {} });
+      window.dispatchEvent(new CustomEvent("course-progress:reset"));
+      render();
+    });
+
+    if ("IntersectionObserver" in window) {
+      const viewTimers = new Map<string, number>();
+      const viewObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          const id = (entry.target as HTMLElement).dataset.completionId;
+          if (!id || completed.has(id)) return;
+          if (entry.isIntersecting) {
+            if (!viewTimers.has(id)) viewTimers.set(id, window.setTimeout(() => { markComplete(id); viewTimers.delete(id); }, 900));
+          } else {
+            const timer = viewTimers.get(id);
+            if (timer) window.clearTimeout(timer);
+            viewTimers.delete(id);
+          }
+        });
+      }, { rootMargin: "-38% 0px -38% 0px", threshold: 0 });
+      milestones.filter((milestone) => milestone.type === "view").forEach((milestone) => {
+        const target = targetFor(milestone);
+        if (target) viewObserver.observe(target);
+      });
+    }
+
+    milestones.filter((milestone) => milestone.type === "submit").forEach((milestone) => {
+      targetFor(milestone)?.querySelectorAll("[data-completion-option]").forEach((button) => button.addEventListener("click", () => markComplete(milestone.id)));
+    });
+
+    milestones.filter((milestone) => milestone.type === "watch").forEach((milestone) => {
+      const video = targetFor(milestone);
+      if (!(video instanceof HTMLVideoElement)) return;
+      let lastPersist = 0;
+      const capturePlayedRanges = () => {
+        const captured: RangePair[] = [...(state.watchRanges[milestone.id] || [])];
+        for (let index = 0; index < video.played.length; index += 1) captured.push([video.played.start(index), video.played.end(index)]);
+        state.watchRanges[milestone.id] = mergeRanges(captured);
+        if (watchedFraction(milestone.id, video.duration) >= (milestone.threshold ?? 0.8)) markComplete(milestone.id);
+        const now = performance.now();
+        if (now - lastPersist > 800) { persist(); lastPersist = now; }
+        render();
+      };
+      video.addEventListener("loadedmetadata", render);
+      video.addEventListener("timeupdate", capturePlayedRanges);
+      video.addEventListener("pause", () => { capturePlayedRanges(); persist(); });
+      video.addEventListener("ended", () => { capturePlayedRanges(); persist(); });
+    });
+
+    render();
+    window.setTimeout(() => {
+      Object.entries(state.explored).forEach(([activityId, itemIds]) => window.dispatchEvent(new CustomEvent("course-progress:explore-state", { detail: { activityId, itemIds } })));
+      completed.forEach((activityId) => window.dispatchEvent(new CustomEvent("course-progress:restore-complete", { detail: { activityId, complete: true } })));
+    }, 0);
+  });
+</script>
+
+<style>
+  .course-progress { position: relative; flex: 0 0 auto; align-self: center; font-family: "Arial Nova", Arial, Helvetica, sans-serif; line-height: 1.3; }
+  .course-progress__trigger { display: flex; min-height: 2.75rem; align-items: center; gap: 0.45rem; padding: 0.45rem 0.75rem; border: 1px solid rgb(255 255 255 / 45%); border-radius: 0.35rem; background: transparent; color: #fff; cursor: pointer; }
+  .course-progress__trigger:hover, .course-progress__trigger[aria-expanded="true"] { background: rgb(255 255 255 / 14%); }
+  .course-progress__trigger span { font-size: 13px; line-height: 1; }
+  .course-progress__trigger strong { font-size: 14px; line-height: 1; }
+  .course-progress__panel { position: absolute; top: calc(100% + 0.75rem); right: 0; z-index: 40; width: min(340px, calc(100vw - 2rem)); max-height: min(42rem, calc(100dvh - 6.5rem)); overflow-y: auto; padding: 24px 20px; border: 1px solid #dfe5ea; border-radius: 0.35rem; background: #fff; box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 22%); color: #071827; }
+  .course-progress__panel[hidden] { display: none; }
+  .course-progress__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+  .course-progress__header p { margin: 0 0 4px; color: #435261; font-size: 13px; line-height: 1.2; }
+  .course-progress__header strong { font-size: 22px; line-height: 1.1; }
+  .course-progress__close { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: #e1e5e7; color: #002546; font-size: 26px; line-height: 1; cursor: pointer; }
+  .course-progress__close:hover, .course-progress__close:focus-visible { background: #bf90fa; outline: 2px solid #002546; outline-offset: 2px; }
+  .course-progress__bar { height: 10px; margin: 20px 0 18px; overflow: hidden; border-radius: 999px; background: #e1e5e7; }
+  .course-progress__bar span { display: block; width: 0; height: 100%; border-radius: inherit; background: #bf90fa; transition: width 0.2s ease; }
+  .course-progress__list-group + .course-progress__list-group { margin-top: 14px; }
+  .course-progress__list-group h2 { margin: 0 0 5px; color: #071827; font-size: 16px; line-height: 1.15; }
+  .course-progress__list-group ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  :global(.course-progress__list-group li) { margin: 0; }
+  :global(.course-progress__list-group a) { display: block; color: #254f73; font-size: 14px; line-height: 1.35; text-align: left; text-decoration: underline; text-decoration-color: rgba(37, 79, 115, 0.35); text-underline-offset: 2px; }
+  :global(.course-progress__list-group a[data-complete="true"]) { color: #435261; text-decoration: none; }
+  .course-progress__reset { width: 100%; min-height: 42px; margin-top: 18px; padding: 9px 12px; border: 1px solid rgba(0, 37, 70, 0.18); border-radius: 999px; background: #fff; color: #435261; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .course-progress__reset:hover, .course-progress__reset:focus-visible { border-color: #002546; outline: 2px solid rgba(0, 37, 70, 0.25); outline-offset: 2px; }
+  @media (max-width: 64rem) {
+    .course-progress__trigger { min-height: 2.75rem; padding-inline: 0.6rem; }
+    .course-progress__trigger span { font-size: 12px; }
+    .course-progress__panel { right: -3.35rem; max-height: calc(100dvh - 5.75rem); }
+  }
+  @media (prefers-reduced-motion: reduce) { .course-progress__bar span { transition: none; } }
+</style>

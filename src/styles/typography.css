@@ -105,7 +105,6 @@ main li + li { margin-top: 0.5rem; }
 .qc-type--caption,
 .qc-type--label { font-size: var(--course-type-compact-size); font-weight: var(--course-type-compact-weight); line-height: var(--course-type-compact-line-height); }
 .qc-type--label { font-weight: var(--course-type-label-weight); }
-.qc-type--eyebrow { color: var(--qc-type-accent); font-size: var(--course-type-eyebrow-size); font-weight: var(--course-type-eyebrow-weight); letter-spacing: 0.04em; line-height: 1.3; }
 .qc-type--statement { font-size: var(--course-type-statement-size); font-weight: var(--course-type-statement-weight); line-height: var(--course-type-statement-line-height); }
 .qc-type--statistic { font-size: var(--course-type-statistic-size); font-weight: var(--course-type-statistic-weight); letter-spacing: 0; line-height: var(--course-type-statistic-line-height); }
 .qc-type--quote { font-size: var(--course-type-quote-size); font-weight: var(--course-type-quote-weight); line-height: var(--course-type-quote-line-height); }
@@ -186,9 +185,6 @@ main li + li { margin-top: 0.5rem; }
 .qc-text-layout--surface-dark .qc-type { color: inherit; }
 .qc-text-layout--surface-primary .qc-type--tone-muted,
 .qc-text-layout--surface-dark .qc-type--tone-muted { color: rgb(255 255 255 / 80%); }
-.qc-text-layout--surface-primary .qc-type--eyebrow,
-.qc-text-layout--surface-dark .qc-type--eyebrow { color: inherit; }
-
 .qc-text-layout--two-equal,
 .qc-text-layout--two-main,
 .qc-text-layout--two-aside,

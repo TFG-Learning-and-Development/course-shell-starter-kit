@@ -1,0 +1,112 @@
+---
+export type ExploreItem = { id: string; title: string; body: string };
+
+interface Props {
+  id: string;
+  title: string;
+  intro?: string;
+  items: ExploreItem[];
+  variant: "accordion" | "cards" | "tabs";
+}
+
+const { id, title, intro, items, variant } = Astro.props as Props;
+const itemIds = items.map((item) => item.id);
+---
+
+<section id={id} class:list={["explore-group", `explore-group--${variant}`]} data-explore-group data-completion-id={id} data-required-items={JSON.stringify(itemIds)}>
+  <h2>{title}</h2>
+  {intro && <p>{intro}</p>}
+
+  {variant === "accordion" && items.map((item, index) => (
+    <article data-explore-item={item.id}>
+      <h3><button type="button" aria-expanded="false" aria-controls={`${id}-panel-${index}`} data-explore-trigger>{item.title}</button></h3>
+      <div id={`${id}-panel-${index}`} hidden data-explore-panel><p>{item.body}</p></div>
+    </article>
+  ))}
+
+  {variant === "cards" && <div class="explore-group__cards">
+    {items.map((item) => (
+      <article data-explore-item={item.id}>
+        <button type="button" aria-pressed="false" data-explore-trigger><strong>{item.title}</strong><span>{item.body}</span></button>
+      </article>
+    ))}
+  </div>}
+
+  {variant === "tabs" && <div data-tabs>
+    <div role="tablist" aria-label={title}>
+      {items.map((item, index) => (
+        <button id={`${id}-tab-${index}`} type="button" role="tab" aria-selected={index === 0 ? "true" : "false"} aria-controls={`${id}-panel-${index}`} tabindex={index === 0 ? "0" : "-1"} data-explore-trigger data-explore-item={item.id}>{item.title}</button>
+      ))}
+    </div>
+    {items.map((item, index) => (
+      <section id={`${id}-panel-${index}`} role="tabpanel" aria-labelledby={`${id}-tab-${index}`} hidden={index !== 0} data-explore-panel data-explore-item={item.id}><p>{item.body}</p></section>
+    ))}
+  </div>}
+  <p data-explore-status aria-live="polite"></p>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-explore-group]").forEach((root) => {
+    if (root.dataset.exploreReady === "true") return;
+    root.dataset.exploreReady = "true";
+    const activityId = root.dataset.completionId || "";
+    const required = JSON.parse(root.dataset.requiredItems || "[]") as string[];
+    const explored = new Set<string>();
+    const status = root.querySelector<HTMLElement>("[data-explore-status]");
+    const isTabs = root.classList.contains("explore-group--tabs");
+    const isCards = root.classList.contains("explore-group--cards");
+
+    const render = () => {
+      root.querySelectorAll<HTMLElement>("[data-explore-item]").forEach((item) => { item.dataset.explored = String(explored.has(item.dataset.exploreItem || "")); });
+      if (status) status.textContent = explored.size === required.length ? "Activity complete." : "";
+    };
+    const record = (itemId: string) => {
+      if (!itemId) return;
+      explored.add(itemId);
+      render();
+      window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId, itemId } }));
+    };
+
+    root.querySelectorAll<HTMLButtonElement>("[data-explore-trigger]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const item = button.closest<HTMLElement>("[data-explore-item]") || button;
+        const itemId = item.dataset.exploreItem || "";
+        if (isTabs) {
+          root.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((tab) => { const selected = tab === button; tab.setAttribute("aria-selected", String(selected)); tab.tabIndex = selected ? 0 : -1; });
+          root.querySelectorAll<HTMLElement>("[role=tabpanel]").forEach((panel) => { panel.hidden = panel.dataset.exploreItem !== itemId; });
+        } else if (isCards) {
+          const pressed = button.getAttribute("aria-pressed") === "true";
+          button.setAttribute("aria-pressed", String(!pressed));
+        } else {
+          const expanded = button.getAttribute("aria-expanded") === "true";
+          button.setAttribute("aria-expanded", String(!expanded));
+          const panel = item.querySelector<HTMLElement>("[data-explore-panel]");
+          if (panel) panel.hidden = expanded;
+        }
+        record(itemId);
+      });
+      if (isTabs) button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>("[role=tab]"));
+        const current = tabs.indexOf(button);
+        const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[next]?.focus(); tabs[next]?.click();
+      });
+    });
+
+    window.addEventListener("course-progress:explore-state", ((event: CustomEvent<{ activityId: string; itemIds: string[] }>) => {
+      if (event.detail.activityId !== activityId) return;
+      event.detail.itemIds.forEach((itemId) => explored.add(itemId)); render();
+    }) as EventListener);
+    window.addEventListener("course-progress:reset", () => {
+      explored.clear();
+      root.querySelectorAll<HTMLButtonElement>("[data-explore-trigger]").forEach((button) => { button.setAttribute("aria-expanded", "false"); button.setAttribute("aria-pressed", "false"); });
+      root.querySelectorAll<HTMLElement>("[data-explore-panel]").forEach((panel, index) => { panel.hidden = isTabs ? index !== 0 : true; });
+      if (isTabs) root.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((tab, index) => { tab.setAttribute("aria-selected", String(index === 0)); tab.tabIndex = index === 0 ? 0 : -1; });
+      render();
+    });
+    window.dispatchEvent(new CustomEvent("course-progress:request-restore", { detail: { activityId, apply: (itemIds: string[]) => { itemIds.forEach((itemId) => explored.add(itemId)); render(); } } }));
+    if (isTabs) record(root.querySelector<HTMLButtonElement>("[role=tab]")?.dataset.exploreItem || "");
+  });
+</script>

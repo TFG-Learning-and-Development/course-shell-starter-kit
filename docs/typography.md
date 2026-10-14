@@ -2,9 +2,15 @@
 
 The starter includes the Quick Course typography primitives without the source showcase, approval metadata or learner-facing specimen content. The implementation is local, static-site friendly and makes no font or runtime requests.
 
+## Mandatory course standard
+
+Every new course must inherit this typography system through `CourseLayout.astro`; do not introduce an alternative typography layer. Preserve the established semantic heading levels, font families, sizes, weights, line heights and responsive scaling. Build course content and interactions with the existing components, classes and `--course-type-*` tokens.
+
+Mood boards and design boards may guide colour, imagery and composition, but they do not authorize typography changes. Do not alter shared typography to imitate a visual reference. Apply a heading-specific override only when explicitly requested, scope it to that heading, and leave shared tokens unchanged. Do not add eyebrow content or contextual labels above headings.
+
 ## Defaults and configuration
 
-The shared implementation lives in `src/styles/typography.css`. Do not edit that file for an individual course. Course-wide settings live in `src/styles/course-typography.css` and include local font stacks, body and interface settings, every role size, heading weights and line heights, measures and prose spacing.
+The shared implementation lives in `src/styles/typography.css`, and the approved course tokens live in `src/styles/course-typography.css`. Do not edit either file for an individual course unless the user explicitly requests a reviewed typography change.
 
 The default sans stack is `"Arial Nova", Arial, Helvetica, sans-serif`. No webfont is bundled or fetched. Arial Nova is used when installed; otherwise the browser continues through the local fallback stack. Serif is an explicit editorial option and code uses the local monospace stack.
 
@@ -15,17 +21,7 @@ The override order is predictable:
 3. Component properties select a controlled role, family, measure, weight, tone, layout or surface.
 4. A wrapper or component class may override the same `--course-type-*` custom properties for a genuinely local exception.
 
-For a course-wide change, edit `course-typography.css`:
-
-```css
-:root {
-  --course-type-heading-lg-size: clamp(1.75rem, 3vw, 2.6rem);
-  --course-type-heading-lg-weight: 650;
-  --course-type-prose-gap: 1.5rem;
-}
-```
-
-A local exception stays scoped:
+Only an explicitly requested heading exception may override a token, and it stays scoped:
 
 ```astro
 <div class="short-opening">
@@ -55,7 +51,6 @@ HTML semantics and visual roles are independent. Choose `as` for the document ou
 | `body` | Normal instructional reading | `1.125rem` | 400 | 1.55 |
 | `body-compact` | Concise secondary context | `0.875rem` | 400 | 1.45 |
 | `label` | Labels and compact metadata | `0.875rem` | 650 | 1.45 |
-| `eyebrow` | Short contextual label | `0.78rem` | 650 | 1.3 |
 | `caption` | Media, figure, source or attribution text | `0.875rem` | 400 | 1.45 |
 | `statement` | Short high-impact statement | `clamp(1.9rem, 4.5vw, 4.4rem)` | 750 | 1.06 |
 | `statistic` | Standalone value | `clamp(2.4rem, 5.5vw, 5rem)` | 800 | 0.95 |
@@ -143,4 +138,4 @@ Display and serif treatments are opt-in. Keep long or required reading in sans `
 
 The system uses only local system fonts, Astro markup and CSS. It adds no DaisyUI, Iconify, font service, client-side runtime, analytics or LMS behavior. Normal builds contain only the course page; typography specimens are rendered solely by the temporary `COURSE_VERIFY_COMPONENTS=1` fixture used by `npm run verify`.
 
-After changing tokens or composing new typography, run `npm run build` and `npm run verify`. The verifier checks the shell at eight required viewport sizes, the typography/components fixture at mobile, tablet and desktop sizes, a 200% browser-zoom equivalent (a 640 CSS-pixel viewport rendered at 2x scale), responsive columns, role weights, local overrides, font stacks, overflow, clipping, external requests, keyboard focus and runtime errors.
+At handover, run and report `npm run build` and `npm run verify`, explicitly including the typography result. The verifier checks the shell at the required viewport sizes, the typography/components fixture at mobile, tablet and desktop sizes, a 200% browser-zoom equivalent (a 640 CSS-pixel viewport rendered at 2x scale), responsive columns, role weights, scoped overrides, font stacks, overflow, clipping, external requests, keyboard focus and runtime errors.
