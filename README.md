@@ -1,6 +1,6 @@
 # astro-course-shell
 
-A neutral, reusable Astro course starter with responsive section navigation, accessible focus states, a skip link, reduced-motion support and one example interaction.
+A neutral, reusable Astro course starter with a premium editorial and interaction library, configurable lessons and themes, requirements-based SCORM 1.2 packaging, responsive navigation, accessible focus states, a skip link and reduced-motion support. The two-lesson demonstration shows representative patterns without turning the course into a component gallery.
 
 The dependency baseline is Astro `7.3.8` with Tailwind CSS `4.2.2` through `@tailwindcss/vite`. Astro 7 uses Vite 8; the installed Tailwind adapter supports that Vite major directly, so no styling migration or compatibility shim is required.
 
@@ -20,33 +20,44 @@ npx playwright install chromium
 npm run dev
 npm run build
 npm run verify
+npm run package:scorm
+npm run verify:scorm
 npm run preview
 ```
 
 Use `npm ci` for a clean, lockfile-exact install. On a fresh Linux CI image, Playwright may also require `npx playwright install --with-deps chromium`. Do not replace the lockfile with a lockfile from another package manager.
 
-The starter runs locally without credentials, environment variables or an LMS connection. Its only external dependencies are the packages recorded in `package-lock.json`; no external runtime services, fonts, images or analytics are used.
+The starter runs locally without credentials, environment variables or an LMS connection. A packaged launch uses only the SCORM 1.2 API supplied by its LMS window. Its only external dependencies are the packages recorded in `package-lock.json`; no external runtime services, fonts, images or analytics are used.
+
+Run `npm run dev` and open `http://localhost:4321/__component-gallery/` for the development-only component gallery. It renders the actual shared components with neutral examples. Preview choices and reflection text stay in memory for that page session. The route is excluded from normal production builds and SCORM packages; the verification fixture remains available only to the temporary verifier build.
 
 ## File map
 
-- `src/data/course.ts` — primary editing location for metadata, navigation labels and learner-facing copy.
-- `src/pages/index.astro` — starter-page structure and client-side navigation/interaction behaviour.
+- `src/data/course.ts` — primary editing location for metadata, lesson labels and learner-facing copy.
+- `src/data/course-config.ts` — typed identity, branding, ordered lessons, unlocking and package metadata with validation.
+- `src/data/course-completion.ts` — course-specific milestone requirements and versioned storage key.
+- `docs/course-engine.md` — beginner lesson example and reusable Codex prompts.
+- `src/pages/index.astro` and `src/pages/[...lesson].astro` — entry content and generated named/nested lesson pages.
+- `src/components/CoursePage.astro` — shared responsive header, Progress, navigation and standard footer.
 - `src/layouts/CourseLayout.astro` — shared document shell and metadata.
 - `src/components/` — reusable presentation components; see [`docs/components.md`](docs/components.md) for properties and examples.
+- `src/styles/premium-components.css` — shared spacing, surface, card, layout and interaction treatments inherited by premium components.
 - `src/styles/global.css` — neutral theme, responsive layout, focus states and reusable component styles.
 - `src/styles/typography.css` — shared Quick Course typography implementation.
 - `src/styles/course-typography.css` — course-wide typography settings; see [`docs/typography.md`](docs/typography.md).
 - `public/assets/` — course-specific images, downloads and static media; see [`docs/course-assets.md`](docs/course-assets.md).
 - `scripts/verify-course.mjs` — production-output, responsive, interaction and verification-fixture checks.
-- `scripts/fixtures/ComponentFixture.astro` — verification-only component page; it is injected only into the temporary verification build.
+- `scripts/fixtures/ComponentFixture.astro` — development gallery and verification fixture, injected only into local development or the temporary verification build.
 
 ## Editing guidance
 
-Start with `src/data/course.ts`. Keep each navigation `id` in sync with the corresponding section ID in `src/pages/index.astro`. Keep stable layout and interaction behaviour in the existing page and components, and add course-specific assets under `public/assets/`.
+Start with `src/data/course.ts`, then configure ordered routes and package identity in `src/data/course-config.ts` and real milestone requirements in `src/data/course-completion.ts`. The first lesson uses `/`; later paths may be named and nested, such as `/topics/practice/`. Add a matching `courseData.lessonPages` entry for each additional lesson. Keep every milestone `targetId` in sync with an actual rendered element. Add course-specific assets under `public/assets/`.
+
+For a real build, treat the approved storyboard as the source for content, sequence, questions and required activities. Use the mood board and supplied assets for the course theme, imagery and composition. Select the smallest useful set of premium patterns, register the actual milestones during the build, and use unique course, activity and storage identities. If the brief does not establish content or a completion requirement, stop and request the approved decision rather than inventing it.
 
 Do not add eyebrow content or small contextual labels above headings. Begin each section with its semantic heading, followed by an optional introduction when useful; the starter intentionally provides no eyebrow data field, component property, typography role or styling.
 
-The default header is logo-only: keep the home link's accessible name, but do not add a visible course-name label beside the logo. The logo slot accepts wide or square image/SVG artwork without stretching. Preserve the header order—logo, flexible space, navigation links, then Progress at the padded right edge—and retain the early mobile breakpoint so at least five realistic link labels move into the disclosure before they wrap or crowd adjacent controls.
+The default header is logo-only: keep the home link's accessible name, but do not add a visible course-name label beside the logo. The logo slot accepts wide or square image/SVG artwork without stretching. Place Lessons and Progress together at the padded right edge. The Lessons button opens a dark, internally scrolling overlay with configured lesson numbers starting at 00, titles, current-lesson highlighting and lock explanations from the shared unlock state. Do not place individual lesson links in the header row. Preserve package-safe routes, keyboard focus, Escape and outside-click dismissal, and mutual dismissal with Progress on desktop and mobile.
 
 The footer sentence is fixed for every course as `Return to People Connect to continue`. Keep it as plain static text: do not turn it into a link or button, attach completion tracking, or add an LMS action. Keep Back to top in its default compact capsule treatment with the upward arrow, keyboard focus, anchor behaviour and reduced-motion support. The footer background is course-specific and should follow the supplied mood board or design board through the theme colour settings, with readable text contrast.
 
@@ -75,27 +86,27 @@ The Overview/hero gradient must inherit `--course-accent-strong` and `--course-a
 
 The footer uses `--course-accent` as its background, so update that token from the supplied mood board or design board and confirm the fixed white footer text remains readable. The Activity progress bar and related accent states must use the same shared token for every course; do not add a separate progress colour. Keep the unfilled track neutral and contrast-check the filled state against it.
 
-After editing content, run `npm run build` and `npm run verify`. The verifier creates and removes a temporary component-fixture build, exercises the documented desktop, tablet and mobile sizes, and checks navigation, keyboard interactions, component containment, storage isolation, failed resources, console errors and horizontal overflow.
+After editing content, run `npm run build`, `npm run verify`, `npm run package:scorm` and `npm run verify:scorm`. The browser verifier creates and removes a temporary fixture build, exercises responsive widths, lesson navigation, shared components and progress restoration. The extracted-ZIP verifier tests a simulated LMS from a strict nested path.
 
 ## Mandatory completion workflow
 
 Completion tracking is part of every course build; it does not require a separate request. Replace the starter milestones in `src/data/course-completion.ts` with course-specific requirements derived from the storyboard and the content actually implemented. Connect required sections, videos and interactions to the existing VIEW, WATCH, attempt-based SUBMIT or COMPLETE, and EXPLORE triggers. Preserve the approved defaults and event contracts.
 
-Optional resources, navigation, the fixed footer message and Back to top must not contribute to required completion. Before handover, validate unique milestone and target IDs, working targets and triggers, the course-specific versioned storage key, saved progress, restoration and reset. See [`docs/completion-tracking.md`](docs/completion-tracking.md) for the exact contracts.
+Optional resources, navigation, the fixed footer message and Back to top must not contribute to required completion. Validate unique lesson routes, milestone and target IDs, exploration children, working triggers, the course-specific versioned storage key, browser restoration and LMS suspend/resume. A lesson with no requirements passes through sequential unlocking; an entirely empty requirement set never completes the LMS. See [`docs/completion-tracking.md`](docs/completion-tracking.md) for the exact contracts.
 
 ## Build handover requirements
 
-Every handover must report `npm run build` and `npm run verify`, including the typography and completion-tracking checks. State clearly that the included progress system is browser-based tracking stored in `localStorage`, not LMS or SCORM reporting. If an LMS runtime, reporting connection, manifest, launch wrapper or SCORM package has not been implemented and tested, list it as outstanding infrastructure.
+Every handover must report `npm run build`, `npm run verify`, `npm run package:scorm` and `npm run verify:scorm`, including typography and completion-tracking checks. Standalone use saves browser progress; packaged use reports requirements-based completion through an LMS-provided SCORM 1.2 API. The ZIP verifier simulates an LMS; live People Connect import, launch, resume and reporting remain separate acceptance work.
 
 ## Hosting assumptions
 
-The default build is a static site in `dist/` intended to be served at a domain root. Astro's generated CSS URL and the documented course-asset URLs are root-relative. A basic static host must serve `dist/index.html` for `/` and the generated files beneath `dist/_astro/` and `dist/assets/`.
+The default build is a static site in `dist/` intended to be served at a domain root. A static host must serve `dist/index.html` for `/`, each configured lesson's `index.html`, and generated files beneath `dist/_astro/` and `dist/assets/`.
 
-Subdirectory hosting requires a reviewed Astro `base` configuration and corresponding asset references. Future SCORM packaging must also establish the LMS launch path, relative-asset strategy, manifest requirements and target LMS behaviour. The current output has not been tested as a ZIP or SCORM package and should not be described as package-compatible.
+`package:scorm` rewrites built asset links relative to each lesson folder and targets explicit `index.html` lesson files. It packages a single SCO with a manifest derived from configuration. Ordinary non-SCORM subdirectory hosting still needs a reviewed Astro `base` configuration.
 
 ## SCORM status
 
-SCORM integration is pending. The starter contains browser-local completion rules and persisted progress, but no LMS runtime, LMS reporting connection, manifest, launch wrapper or packaging command. Confirm the target SCORM version, LMS requirements, completion criteria and suspend-data strategy before adding that separate integration.
+The neutral SCORM 1.2 demonstration package is `scorm-output/Course-Shell-SCORM-1.2.zip`. Before using this shell for a real course, replace the demonstration copy, course identity, package metadata and milestone requirements with approved course-specific values, increment the storage version when requirements change, and test the resulting ZIP in the target LMS. No learner-facing Exit, Finish or Reset Progress control is included.
 
 ## Optional WASM packages
 

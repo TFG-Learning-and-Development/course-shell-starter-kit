@@ -1,0 +1,14 @@
+---
+type Item = { id: string; title: string; body: string };
+interface Props { id: string; title: string; intro?: string; items: readonly Item[] }
+const { id, title, intro, items } = Astro.props as Props;
+---
+<section class="premium-section" id={id} data-completion-id={id} data-required-items={JSON.stringify(items.map((item) => item.id))} data-premium-reveals aria-labelledby={`${id}-heading`}>
+  <div class="container"><div class="premium-section__intro"><h2 id={`${id}-heading`}>{title}</h2>{intro && <p>{intro}</p>}</div><div class="premium-reveals">{items.map((item, index) => <article class="premium-reveal"><h3><button type="button" aria-expanded="false" aria-controls={`${id}-reveal-${index}`} data-reveal-id={item.id}><span>{item.title}</span><span aria-hidden="true">+</span></button></h3><div class="premium-reveal__body" id={`${id}-reveal-${index}`} hidden><p>{item.body}</p></div></article>)}</div></div>
+</section>
+<script>
+  document.querySelectorAll<HTMLElement>("[data-premium-reveals]").forEach((root) => {
+    if (root.dataset.ready === "true") return; root.dataset.ready = "true";
+    root.querySelectorAll<HTMLButtonElement>("[data-reveal-id]").forEach((button) => button.addEventListener("click", () => { const open = button.getAttribute("aria-expanded") !== "true"; button.setAttribute("aria-expanded", String(open)); const panel = document.getElementById(button.getAttribute("aria-controls") || ""); if (panel) panel.hidden = !open; const icon = button.querySelector<HTMLElement>("[aria-hidden]"); if (icon) icon.textContent = open ? "−" : "+"; if (open && button.dataset.revealId) window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId: button.dataset.revealId } })); }));
+  });
+</script>

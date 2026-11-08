@@ -1,0 +1,11 @@
+---
+import type { EditorialMedia } from "./premium-types";
+interface Props { id?: string; title: string; paragraphs?: readonly string[]; portrait: EditorialMedia; quote: string; citation?: string; completionId?: string }
+const { id, title, paragraphs = [], portrait, quote, citation, completionId } = Astro.props as Props;
+---
+<section id={id} class="premium-section premium-section--soft" data-completion-id={completionId}>
+  <div class="container portrait-quote">
+    <img class="portrait-quote__image" src={portrait.src} alt={portrait.alt} style={`object-position:${portrait.position || "center"}`} width="800" height="1000" loading="lazy" decoding="async" />
+    <div><div class="premium-section__intro"><h2>{title}</h2>{paragraphs.map((paragraph) => <p>{paragraph}</p>)}</div><blockquote><p>“{quote}”</p>{citation && <footer>— {citation}</footer>}</blockquote></div>
+  </div>
+</section>

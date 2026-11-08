@@ -1,0 +1,20 @@
+---
+import type { CourseLesson } from "../data/course-config";
+interface Props { previous?: CourseLesson; next?: CourseLesson }
+const { previous, next } = Astro.props as Props;
+---
+
+{(previous || next) && <nav class="lesson-navigation section" aria-label="Lesson navigation">
+  <div class="container lesson-navigation__inner">
+    {previous ? <a href={previous.path} data-lesson-path={previous.path} aria-label={`Previous lesson: ${previous.label}`}>&larr; Previous: {previous.label}</a> : <span></span>}
+    {next && <a href={next.path} data-lesson-path={next.path} aria-label={`Next lesson: ${next.label}`} data-next-lesson>Next: {next.label} &rarr;</a>}
+  </div>
+</nav>}
+
+<style>
+  .lesson-navigation { background: var(--surface-soft); }
+  .lesson-navigation__inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+  .lesson-navigation a { display: inline-flex; min-height: 2.75rem; align-items: center; padding: .6rem 1rem; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); font-size: var(--course-type-ui-size); font-weight: 650; text-decoration: none; }
+  .lesson-navigation a:hover { border-color: var(--course-accent); box-shadow: 0 .2rem .65rem rgb(0 0 0 / 12%); }
+  .lesson-navigation a[data-locked="true"] { color: var(--muted); background: var(--surface-soft); cursor: not-allowed; }
+</style>

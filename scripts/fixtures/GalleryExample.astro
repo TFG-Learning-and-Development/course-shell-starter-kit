@@ -1,0 +1,37 @@
+---
+interface Props {
+  name: string;
+  purpose: string;
+  properties: string;
+  completion: string;
+  usage: string;
+}
+const { name, purpose, properties, completion, usage } = Astro.props as Props;
+---
+<section class="gallery-example" aria-label={`${name} example`}>
+  <div class="gallery-example__notes">
+    <h3>{name}</h3>
+    <p>{purpose}</p>
+    <dl>
+      <div><dt>Editable properties</dt><dd>{properties}</dd></div>
+      <div><dt>Completion</dt><dd>{completion}</dd></div>
+      <div><dt>Use</dt><dd><code>{usage}</code></dd></div>
+    </dl>
+  </div>
+  <div class="gallery-example__preview"><slot /></div>
+</section>
+
+<style>
+  .gallery-example { min-width: 0; border: 1px solid var(--line); border-radius: var(--course-radius-card); overflow: hidden; background: var(--surface); }
+  .gallery-example__notes { padding: var(--course-space-card); background: var(--surface-soft); }
+  .gallery-example__notes h3 { margin-bottom: .4rem; font-size: var(--course-type-heading-md-size); }
+  .gallery-example__notes p { margin-bottom: 1rem; }
+  .gallery-example__notes dl { display: grid; gap: .55rem; margin: 0; }
+  .gallery-example__notes dl > div { display: grid; grid-template-columns: minmax(8rem, 11rem) minmax(0, 1fr); gap: .5rem; }
+  .gallery-example__notes dt { font-weight: 700; }
+  .gallery-example__notes dd { min-width: 0; margin: 0; }
+  .gallery-example__notes code { overflow-wrap: anywhere; }
+  .gallery-example__preview { min-width: 0; }
+  :global(.gallery-example__preview > .premium-section) { padding-block: 2rem; }
+  @media (max-width: 42rem) { .gallery-example__notes dl > div { grid-template-columns: 1fr; gap: .1rem; } }
+</style>

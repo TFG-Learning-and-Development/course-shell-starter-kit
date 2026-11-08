@@ -1,50 +1,30 @@
-# Completion tracking
+# Completion tracking and SCORM 1.2
 
-The browser-based completion system is configured in `src/data/course-completion.ts` and rendered by `CourseProgress.astro`. It is independent of navigation highlighting and has no LMS or SCORM connection.
+Configure lesson order, identity, branding, unlocking and package metadata in `src/data/course-config.ts`. Keep learner-facing lesson labels and copy in `src/data/course.ts`. Define the required activities in `src/data/course-completion.ts`; each one needs a unique `id`, unique DOM `targetId`, lesson `path`, label, type and explicit `required` value. `validateCourseConfig` fails the build for duplicate IDs or targets, invalid routes, malformed exploration children, invalid watch thresholds, or a storage key without the course slug and version.
 
-## Mandatory course-build workflow
+The neutral example has Welcome at `/` and Practice at `/topics/practice/`. `src/pages/[...lesson].astro` generates named and nested lesson routes from the ordered configuration. Add matching page copy in `courseData.lessonPages` for each new route. There is no fixed lesson count or milestone count. The first lesson uses `/`; later lessons use trailing-slash paths. The standard footer is fixed plain text and never contributes to completion.
 
-Configure completion tracking during every course build; no separate tracking request is required. Replace the starter milestones with course-specific requirements derived from the storyboard and the content actually implemented. Do not retain placeholder requirements or configure milestones for content that is absent.
+## Completion rules
 
-Connect required content, videos and interactions to the appropriate existing behavior: VIEW for qualified section viewing, WATCH for merged unique playback ranges, attempt-based SUBMIT or COMPLETE for questions and submitted activities, and EXPLORE for configured child items. Preserve all approved rules, thresholds, weighting, events, persistence, restoration and reset behavior. Do not add correctness gates, longer dwell times, playback restrictions or other policy changes unless explicitly approved.
+- `view`: add matching `id` and `data-completion-id` to an ordinary content section. It completes immediately when the section enters the central viewport zone while the tab is visible. Hidden content and other lesson pages do not qualify; interactions and videos keep their own requirements.
+- `watch`: add both attributes to a `<video>`. Merged unique `video.played` ranges must reach `threshold`, default `0.8`. Replays and skipped gaps do not add credit.
+- `submit`: add both attributes to a form and `data-completion-option` to selectable answers. A real selection and valid submission count as an attempt, regardless of correctness. The shared single-choice `PremiumAssessment` calls `requestSubmit()` on intentional radio change, so it shows feedback and records the attempt without a separate button. Initial rendering and restored selections never call `requestSubmit()`; matching still requires its explicit valid submission.
+- `complete`: add both attributes to the activity and dispatch `course-progress:complete` with `{ activityId }` at the approved completion moment.
+- `explore`: add both attributes and JSON `data-required-items` to the group. Dispatch `course-progress:explore` with `{ activityId, itemId }` for each configured child. Every child must be explored. `ExploreGroup.astro` demonstrates this contract.
+- `optional`: an event-driven compatibility type. Only `required: false` excludes an item from the percentage.
 
-Optional resources, navigation links, the fixed footer message and Back to top are excluded from required completion. Before handover, validate unique milestone and target IDs, working targets and triggers, a course-specific versioned storage key, saved progress, restoration and reset.
+Required milestones have equal weight. Navigation, optional resources, footer text and Back to top are excluded. The same completed-ID set drives overall progress, per-lesson progress, checklist state, sequential unlocking and LMS completion. The checklist links to visible targets, focuses them and highlights them. A component with a hidden target can reveal it on `course-progress:reveal-target` before focus; no lesson-specific selector is built into the manager.
 
-## Configuration
+Sequential unlocking is set by `completion.sequentialUnlocking`. When enabled, a lesson unlocks after all required milestones in the preceding lesson are complete; lessons with no requirements pass through. When disabled, all lesson routes are available. If no milestones are configured, Progress stays at 0%, all routes remain available and no LMS completion is sent. Direct-route guards and LMS resume decisions occur after saved state is restored. Previous lessons remain available.
 
-Each milestone has a unique `id`, learner-facing `label`, supported `type`, unique `targetId`, and explicit `required` boolean. Required milestones are equally weighted; non-required milestones never enter the percentage denominator. A `watch` milestone may set `threshold` from greater than `0` through `1`; the default is `0.8`. Use a course-specific, versioned key such as `astro-course-progress:course-slug:v1`.
+## State and LMS behavior
 
-Supported types:
+Standalone launches save course-specific state in `localStorage`. LMS launches read only the LMS attempt's `cmi.suspend_data`; stale standalone progress is never imported. Suspend data includes the versioned storage key and a fingerprint of the ordered milestone schema. A mismatch makes progress read-only and displays an error, preserving the existing LMS record. Increment the storage-key version when changing requirement meaning or order.
 
-- `view`: place `data-completion-id="milestone-id"` on the target. It completes after 900 ms continuously in the central viewport zone (`rootMargin: -38% 0 -38%`).
-- `watch`: put both the target `id` and `data-completion-id` on a `<video>`. Merged unique `video.played` ranges must reach the threshold; seeking gaps and replayed ranges do not add credit.
-- `submit`: put `data-completion-id` on the activity and `data-completion-option` on answer controls. Any answer selection completes it, regardless of correctness.
-- `explore`: put `data-completion-id` and a JSON `data-required-items` array on the group. Dispatch `course-progress:explore` with `{ activityId, itemId }` for each child. The included `ExploreGroup.astro` demonstrates accordion, card and tab variants. Its initially visible first tab is recorded immediately.
-- `complete`: put the matching `id` and `data-completion-id` on the target, then dispatch `course-progress:complete` with `{ activityId }` at the approved completion moment.
-- `optional`: retained for compatibility with the pilot. Give its target the matching `id` and `data-completion-id`; it has no automatic behaviour and normally uses the same `course-progress:complete` event. Despite the type name, only `required: false` excludes a milestone from progress.
+The SCORM 1.2 bridge discovers `window.API` or an accessible parent/opener. It probes for an active LMS session before calling `LMSInitialize`, so lesson navigation, refresh and Back/Forward can reuse that session. Fresh attempts become `incomplete`. Each progress change saves bounded suspend data and lesson location, then commits. It writes `completed` and commits immediately only when a nonempty set of required milestones is fully complete. Existing `completed` and `passed` statuses are preserved. `cmi.suspend_data` above 4,096 characters is rejected with a visible save error. Save failures roll back the new milestone in the UI and do not clear the previous LMS record. Tab hiding and same-SCO navigation save without completing or calling `LMSFinish`; actual course closure saves, sets `cmi.core.exit=suspend`, commits and finishes once. Back/Forward restoration reloads from persisted state. There are no learner-facing Exit, Finish or Reset Progress controls.
 
-For a standard question, use `submit` and mark each selectable answer with `data-completion-option`. For matching, require at least one real selection in the activity code, then dispatch `course-progress:complete` only when the learner submits. A section uses `view`; a video uses `watch`; accordion, reveal-card, and tab groups use `explore`. Configuration errors for duplicate IDs, duplicate targets, malformed thresholds, or an unversioned storage key fail the build. Unresolved DOM targets report a clear browser console error and never become satisfied.
+The package contains one SCO, a SCORM 1.2 manifest and explicit `index.html` lesson links. `package:scorm` derives its filename, manifest identifier, title and route list from the built configuration. It rewrites assets relative to each HTML folder. The ordinary static build retains root-hosted routes.
 
-## Events and restoration
+## Build and handover
 
-- Send `course-progress:explore` with `{ activityId, itemId }`.
-- Send `course-progress:complete` with `{ activityId }`.
-- An explore component may send `course-progress:request-restore` with `{ activityId, apply(itemIds) }`.
-- The manager emits `course-progress:explore-state` with `{ activityId, itemIds }`, `course-progress:restore-complete` with `{ activityId, complete }`, and `course-progress:reset`.
-
-Progress, merged video ranges, and explored child IDs are stored in `localStorage`. Reset removes only this course's configured key, resets tracked videos, and emits the reset event so interactions can clear their own visual state. Changing the key version intentionally starts a new progress record.
-
-## Known inherited limitations
-
-- VIEW depends on browser intersection timing; background tabs and very short sections can behave differently across browsers.
-- WATCH relies on the browser's `played` ranges and media duration metadata. It does not restrict playback speed.
-- SUBMIT is intentionally attempt-based, not correctness-based.
-- EXPLORE is binary in the percentage even though partial child state is saved.
-- The source type named `optional` does not itself make an item optional; `required` controls inclusion.
-- Local storage is device-and-browser specific and can be cleared or unavailable.
-
-Future LMS/SCORM work is a separate integration step. It requires confirmed SCORM version, completion rules, launch and manifest requirements, and suspend/resume mapping; this starter contains no LMS calls, manifest, or package.
-
-## Handover readiness
-
-Run and report `npm run build` and `npm run verify`, explicitly including the completion-tracking checks. Describe this implementation as browser tracking persisted in `localStorage`, not LMS or SCORM reporting. If the course has no LMS runtime, reporting connection, manifest, launch wrapper or tested package, record each missing item as outstanding infrastructure rather than implying the course reports completion to an LMS.
+Run `npm run build`, `npm run verify`, `npm run package:scorm` and `npm run verify:scorm`. The browser verifier checks every configured lesson, responsive shell, typography and progress counts. Dedicated fixtures check immediate VIEW entry, hidden and offscreen content, interaction requirements, and four non-numbered/nested lesson routes with unlocking enabled, disabled and empty requirements. The extracted-ZIP verifier derives package identity, routes and milestones from configuration and serves the ZIP from a deep nested path with directory URLs disabled. Its stateful simulated LMS rejects repeated initialization, calls after finish and duplicate finish, and checks lesson navigation, refresh/history, Save and Close, resume, completion, status preservation, schema mismatch and save failure. These checks do not replace live People Connect import, launch, resume and reporting tests.

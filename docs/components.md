@@ -74,7 +74,9 @@ Properties:
 
 ## `CourseProgress` and `ExploreGroup`
 
-Completion configuration, activity attributes, events, persistence, reset behaviour, and examples for sections, videos, questions, matching, accordions, cards, and tabs are documented in [`completion-tracking.md`](completion-tracking.md).
+Pass the validated `courseConfig` to `CourseProgress` from the shared page wrapper. Completion configuration, activity attributes, events, persistence, and examples for sections, videos, questions, matching, accordions, cards and tabs are documented in [`completion-tracking.md`](completion-tracking.md). The Progress panel has no learner-facing reset control.
+
+For every configured lesson, the Progress panel must show its completed/required count and an expanded **Still to do** list built from incomplete required milestone labels. Keep a collapsible **Completed** list with ticks, and show “All required activities completed.” when the lesson has no outstanding requirements. Show a clearly labelled course-wide completed/required count above the lesson summaries. Link outstanding activities through `courseUrl(lesson.path)` and the milestone target ID; focus and highlight same-page targets and restore that focus after cross-lesson navigation. Dispatch `course-progress:reveal-target` for hidden targets. Never grant completion from a checklist link, and never link through a sequentially locked lesson. Keep the panel scrollable and keyboard accessible.
 
 ## Shared theme
 
@@ -83,6 +85,30 @@ Do not hard-code course colours inside components. Configure the custom properti
 The Overview/hero gradient must use `--course-accent-strong` and `--course-accent` so it follows the supplied visual-board palette without layout or typography changes. Do not add starter-specific hero accent values.
 
 The Activity progress UI must inherit the supplied visual-board accent through `--course-accent`, including its filled bar and related accent states. Keep the unfilled track neutral, verify readable contrast, and do not introduce a component-specific progress colour.
+
+## Premium course library
+
+All premium components use typed content props, shared typography and `--course-space-*` spacing tokens. They contain no course brand, fixed lesson selector or fixed storage identity. Multiple instances are scoped by their unique `id`.
+
+For every new or adapted interaction, inset the content and its navigation from the card border with the same shared spacing tokens. Keep Previous/Next controls, counts, submit actions and feedback in deliberate padded rows with clearance from dividers and rounded corners. Let the content set the component height; reserve space only when an interaction needs it to prevent a disruptive transition. Constrain explanatory paragraphs to the shared reading measure. Check selected, hover, keyboard focus and disabled states for contrast and clarity, then inspect both the initial and feedback/revealed states at desktop and mobile widths. On mobile, wrap or internally scroll selectors before labels become cramped; never allow controls to clip or cause page-level overflow. Keep the approved `PremiumAssessment` composition intact when applying these standards.
+
+- `EditorialSplit`: image/text composition with `title`, `paragraphs`, `media`, optional `reverse`, `tone` and VIEW `completionId`.
+- `PortraitQuote`: portrait, supporting paragraphs, quote and optional citation.
+- `PremiumAssessment`: the default single-choice assessment and knowledge-check pattern. Pass a unique `id`, semantic `title`, short learner instruction and typed `question` with options and configured feedback. The component uses one dark gradient rounded panel, heading and theme-accent rule, a light icon question card and feedback in the left column, and large clickable radio cards in the right column, separated by a subtle desktop divider. It stacks without the divider on mobile. A deliberate selection shows feedback and internally submits a valid attempt immediately, including an incorrect choice; empty rendering and restoration do not create an attempt. The chosen answer and its feedback restore through shared course state. Configure its milestone as `submit`; do not add a separate Submit button or reuse this selection rule for matching.
+- `FlipCards` and `RevealGroup`: variable-length exploration sets. Configure `requiredItems` from their item IDs.
+- `CourseCarousel`: variable-length image/copy sequence; set `tracked` only when every slide is an approved requirement.
+- `StepGroup`: keyboard-operable tabs plus previous/next controls, restoration and child exploration events.
+- `ItemExplorer`: optional categories, variable item choices, per-item image galleries and detail lists. Selecting an item dispatches its exploration event.
+- `MatchingActivity`: variable prompts/options, persistent selections and valid-attempt submission feedback. Configure its milestone as `submit`.
+- `ReflectionActivity`: saves text only to course- and activity-specific browser storage; LMS text is learner-isolated when an LMS learner ID exists. A valid save dispatches `complete`.
+
+The neutral learner demonstration uses a representative subset in `src/pages/`. Additional examples are in `scripts/fixtures/ComponentFixture.astro`, injected only into local development and temporary verification builds and excluded from course completion.
+
+Run `npm run dev` and open `http://localhost:4321/__component-gallery/` to try the actual shared components. The gallery uses neutral content, fixture-only in-memory state and no LMS or course progress bridge. It is excluded from production and SCORM builds. `ReflectionActivity` accepts `storageMode="memory"` for this preview only; course use keeps the default course/learner-isolated browser storage.
+
+For each new course, act as a senior UX/UI designer and Astro developer. Reuse or adapt a suitable library component first. Create a new premium reusable component when the storyboard's learning purpose needs a pattern the library cannot provide. Follow the approved visual quality with clear hierarchy, considered spacing, polished states and restrained motion; inherit the shared type, spacing and theme tokens. Provide responsive behavior, keyboard access, visible focus, readable contrast, reduced-motion support and clear learner instructions, feedback and completion cues where relevant. Use typed content/configuration props and unique instance IDs. Keep branding, counts, selectors and storage identities out of the component. Wire approved requirements to the existing tracking/restoration contracts, document the component here and add a neutral working example to the development gallery. Do not invent content or completion rules to fill a gap in the brief.
+
+Configure branding and surfaces in `courseConfig.theme`, the logo in `courseConfig.brand`, and imagery in `courseData`. Deliberate typography overrides should set shared `--course-type-*` properties on one scoped wrapper; do not add a component-local font scale.
 
 ## Typography primitives
 

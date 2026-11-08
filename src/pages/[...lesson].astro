@@ -1,0 +1,25 @@
+---
+import CoursePage from "../components/CoursePage.astro";
+import ItemExplorer from "../components/ItemExplorer.astro";
+import MatchingActivity from "../components/MatchingActivity.astro";
+import ReflectionActivity from "../components/ReflectionActivity.astro";
+import StepGroup from "../components/StepGroup.astro";
+import { courseConfig } from "../data/course-config";
+import { courseData } from "../data/course";
+
+export function getStaticPaths() {
+  return courseConfig.lessons.slice(1).map((lesson) => ({ params: { lesson: lesson.path.slice(1, -1) }, props: { lessonId: lesson.id } }));
+}
+const { lessonId } = Astro.props;
+const pageData = courseData.lessonPages[lessonId as keyof typeof courseData.lessonPages];
+if (!pageData) throw new Error(`No lesson page content configured for ${lessonId}.`);
+---
+<CoursePage lessonId={lessonId}>
+  <section class="premium-section premium-section--dark" id={pageData.targets.intro} data-completion-id={pageData.targets.intro}>
+    <div class="container premium-section__intro"><h1>{pageData.title}</h1><p>{pageData.introduction}</p></div>
+  </section>
+  <ItemExplorer id={pageData.targets.explorer} title={pageData.explorer.title} intro={pageData.explorer.intro} categories={pageData.explorer.categories} items={pageData.explorer.items} />
+  <StepGroup id={pageData.targets.steps} title={pageData.steps.title} intro={pageData.steps.intro} steps={pageData.steps.items} />
+  <MatchingActivity id={pageData.targets.match} title={pageData.match.title} intro={pageData.match.intro} prompts={pageData.match.prompts} options={pageData.match.options} />
+  <ReflectionActivity id={pageData.targets.reflection} title={pageData.reflection.title} prompt={pageData.reflection.prompt} instruction={pageData.reflection.instruction} minimumLength={12} />
+</CoursePage>

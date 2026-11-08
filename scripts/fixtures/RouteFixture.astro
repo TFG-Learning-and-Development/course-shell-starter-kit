@@ -1,0 +1,46 @@
+---
+import CourseProgress from "../../src/components/CourseProgress.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+import "../../src/styles/global.css";
+
+const unlocked = Astro.url.pathname.includes("unlocked");
+const empty = Astro.url.pathname.includes("empty");
+const lessons = [
+  { id: "start", path: "/", label: "Start" },
+  { id: "alpha", path: "/alpha/", label: "Alpha" },
+  { id: "deep", path: "/topics/deep/", label: "Deep topic" },
+  { id: "finish", path: "/finish/", label: "Finish" },
+];
+const milestones = empty ? [] : [
+  { id: "start-view", label: "Start view", type: "view" as const, targetId: "start-view", path: "/", required: true },
+  { id: "deep-check", label: "Deep check", type: "complete" as const, targetId: "deep-check", path: "/topics/deep/", required: true },
+];
+const config: CourseConfig = {
+  identity: { id: "route-fixture", title: "Route fixture", description: "" },
+  brand: { homeLabel: "Fixture home" },
+  theme: defaultCourseTheme,
+  lessons,
+  completion: { storageKey: `astro-course-progress:route-fixture:${empty ? "v3" : unlocked ? "v2" : "v1"}`, sequentialUnlocking: !unlocked, milestones },
+  package: { identifier: "route-fixture-scorm-12", filename: "Route-Fixture.zip", launchFile: "index.html", title: "Route fixture" },
+};
+validateCourseConfig(config);
+if (!empty) {
+  const rejected = (change: (candidate: CourseConfig) => void) => {
+    const candidate = JSON.parse(JSON.stringify(config)) as CourseConfig;
+    change(candidate);
+    try { validateCourseConfig(candidate); } catch { return true; }
+    return false;
+  };
+  if (!rejected((candidate) => { candidate.lessons[1].path = "/"; }) ||
+      !rejected((candidate) => { candidate.completion.milestones[1].id = "start-view"; }) ||
+      !rejected((candidate) => { candidate.completion.milestones[1].targetId = "start-view"; }) ||
+      !rejected((candidate) => { candidate.completion.milestones[1].type = "explore"; candidate.completion.milestones[1].requiredItems = ["same", "same"]; }) ||
+      !rejected((candidate) => { candidate.completion.storageKey = "unversioned"; }) ||
+      !rejected((candidate) => { candidate.completion.milestones[1].path = "/missing/"; })) {
+    throw new Error("Course configuration accepted invalid routes, IDs, targets, version or milestone paths.");
+  }
+}
+---
+<!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>Route fixture</title></head>
+<body><div data-course-path="/"><CourseProgress {config} /><main><section id="start-view" data-completion-id="start-view"><h1>Start</h1></section></main></div></body></html>
+<style is:global>body { min-width: 0; } #start-view { min-height: 100vh; padding: 2rem; }</style>

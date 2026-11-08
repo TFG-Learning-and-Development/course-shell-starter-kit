@@ -1,0 +1,88 @@
+---
+import type { AssessmentQuestion } from "./premium-types";
+
+interface Props { id: string; title: string; instruction: string; question: AssessmentQuestion }
+const { id, title, instruction, question } = Astro.props as Props;
+const config = { id, correctIndex: question.correctIndex, correctFeedback: question.correctFeedback, incorrectFeedback: question.incorrectFeedback };
+---
+
+<section class="premium-section premium-assessment-section" aria-labelledby={`${id}-heading`}>
+  <div class="container">
+    <form class="premium-assessment" id={id} data-completion-id={id} data-premium-assessment>
+      <h2 id={`${id}-heading`}>{title}</h2>
+      <div class="premium-assessment__layout">
+        <div class="premium-assessment__question-column">
+          <div class="premium-assessment__question-card">
+            <span class="premium-assessment__question-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>
+            </span>
+            <div class="premium-assessment__question-copy">
+              <p>{question.prompt}</p>
+              <p><strong>{instruction}</strong></p>
+            </div>
+          </div>
+          <div class="premium-assessment__feedback" data-assessment-feedback role="status" aria-live="polite" aria-atomic="true">
+            <span class="premium-assessment__feedback-icon" aria-hidden="true">✓</span>
+            <p data-assessment-feedback-copy></p>
+          </div>
+        </div>
+        <fieldset class="premium-assessment__answers">
+          <legend class="sr-only">{question.prompt}</legend>
+          {question.options.map((option, index) => (
+            <label class="premium-assessment__option">
+              <input type="radio" name={`${id}-answer`} value={index} data-completion-option required />
+              <span>{option}</span>
+            </label>
+          ))}
+        </fieldset>
+      </div>
+      <script type="application/json" data-assessment-config set:html={JSON.stringify(config).replaceAll("<", "\\u003c")}></script>
+    </form>
+  </div>
+</section>
+
+<script>
+  import { courseStateReady } from "../lib/course-state";
+
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLFormElement>("[data-premium-assessment]").forEach((form) => {
+    if (form.dataset.ready === "true") return;
+    form.dataset.ready = "true";
+    const node = form.querySelector<HTMLScriptElement>("[data-assessment-config]");
+    if (!node?.textContent) return;
+    const config = JSON.parse(node.textContent) as { id: string; correctIndex?: number; correctFeedback: string; incorrectFeedback: string };
+    const inputs = [...form.querySelectorAll<HTMLInputElement>("input[type=radio]")];
+    const feedback = form.querySelector<HTMLElement>("[data-assessment-feedback]");
+    const feedbackCopy = form.querySelector<HTMLElement>("[data-assessment-feedback-copy]");
+    const saved = courseState.get<number | null>(`${config.id}:answer`, null);
+    let selected = Number.isInteger(saved) && saved! >= 0 && saved! < inputs.length ? saved : null;
+
+    const render = () => {
+      inputs.forEach((input, index) => { input.checked = selected === index; });
+      if (!feedback || !feedbackCopy) return;
+      if (selected === null) {
+        delete form.dataset.result;
+        delete feedback.dataset.result;
+        feedbackCopy.textContent = "";
+        return;
+      }
+      const correct = config.correctIndex === undefined || selected === config.correctIndex;
+      const result = correct ? "correct" : "incorrect";
+      form.dataset.result = result;
+      feedback.dataset.result = result;
+      feedbackCopy.textContent = `${correct ? "Correct response." : "Incorrect response."} ${correct ? config.correctFeedback : config.incorrectFeedback}`;
+    };
+
+    inputs.forEach((input) => input.addEventListener("change", () => {
+      if (input.checked) form.requestSubmit();
+    }));
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const choice = inputs.find((input) => input.checked);
+      if (!choice) return;
+      selected = Number(choice.value);
+      courseState.set(`${config.id}:answer`, selected);
+      render();
+    });
+    render();
+  }));
+</script>

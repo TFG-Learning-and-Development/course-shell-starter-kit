@@ -11,6 +11,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "verify": "node scripts/verify-course.mjs",
+    "package:scorm": "node scripts/package-scorm.mjs",
+    "verify:scorm": "node scripts/verify-scorm-package.mjs",
     "astro": "astro"
   },
   "dependencies": {

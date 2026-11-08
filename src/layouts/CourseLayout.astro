@@ -1,24 +1,34 @@
 ---
 import "../styles/global.css";
+import type { CourseTheme } from "../data/course-config";
 
 interface Props {
   title: string;
   description?: string;
+  theme?: CourseTheme;
 }
 
 const {
   title,
   description = "A reusable Astro course starter.",
+  theme,
 } = Astro.props as Props;
+const themeStyle = theme ? [
+  `--ink:${theme.colors.ink}`, `--muted:${theme.colors.muted}`, `--surface:${theme.colors.surface}`,
+  `--surface-soft:${theme.colors.surfaceSoft}`, `--course-accent:${theme.colors.accent}`,
+  `--course-accent-strong:${theme.colors.accentStrong}`, `--course-footer-background:${theme.colors.footer}`,
+  `--course-surface-muted:${theme.surfaces.muted}`, `--course-surface-strong:${theme.surfaces.strong}`,
+  `--course-gradient-soft:${theme.gradients.soft}`, `--course-gradient-strong:${theme.gradients.strong}`,
+].join(";") : undefined;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" style={themeStyle}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#18212b" />
+    <meta name="theme-color" content={theme?.colors.ink || "#18212b"} />
     <title>{title}</title>
   </head>
   <body>

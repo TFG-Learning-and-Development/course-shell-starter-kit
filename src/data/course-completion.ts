@@ -5,50 +5,27 @@ export type CompletionMilestone = {
   label: string;
   type: CompletionType;
   targetId: string;
+  path: string;
   required: boolean;
+  requiredItems?: string[];
   threshold?: number;
 };
 
+// Increment this version when requirements change. Suspend data also carries
+// the exact ordered IDs, so accidental reordering cannot reinterpret progress.
 export const completionSettings = {
-  storageKey: "astro-course-progress:course-shell:v1",
-};
+  storageKey: "astro-course-progress:course-shell:v3",
+  sequentialUnlocking: true,
+} as const;
 
-// Keep tracking configuration separate from learner-facing copy. Only
-// milestones that exist on the starter page belong in this active list.
 export const completionMilestones: CompletionMilestone[] = [
-  { id: "overview", label: "Course overview", type: "view", targetId: "overview", required: true },
-  { id: "content", label: "Course content", type: "view", targetId: "content", required: true },
-  { id: "interaction", label: "Reveal interaction", type: "complete", targetId: "interaction", required: true },
+  { id: "overview", label: "Course overview", type: "view", targetId: "overview", path: "/", required: true },
+  { id: "story", label: "Learner perspective", type: "view", targetId: "story", path: "/", required: true },
+  { id: "principles", label: "Explore the principles", type: "explore", targetId: "principles", path: "/", requiredItems: ["clarity", "rhythm", "purpose"], required: true },
+  { id: "assessment", label: "Answer the knowledge check", type: "submit", targetId: "assessment", path: "/", required: true },
+  { id: "practice-intro", label: "Practice introduction", type: "view", targetId: "practice-intro", path: "/topics/practice/", required: true },
+  { id: "practice-explorer", label: "Explore the planning lenses", type: "explore", targetId: "practice-explorer", path: "/topics/practice/", requiredItems: ["plan", "discuss", "reflect"], required: true },
+  { id: "practice-steps", label: "Explore the build steps", type: "explore", targetId: "practice-steps", path: "/topics/practice/", requiredItems: ["notice", "decide", "act"], required: true },
+  { id: "practice-match", label: "Submit the matching activity", type: "submit", targetId: "practice-match", path: "/topics/practice/", required: true },
+  { id: "practice-reflection", label: "Save the reflection", type: "complete", targetId: "practice-reflection", path: "/topics/practice/", required: true },
 ];
-
-const completionTypes = new Set<CompletionType>(["view", "watch", "submit", "explore", "complete", "optional"]);
-
-export function validateCompletionConfiguration(milestones: CompletionMilestone[], storageKey: string) {
-  const errors: string[] = [];
-  const ids = new Set<string>();
-  const targetIds = new Set<string>();
-
-  if (!/^astro-course-progress:[a-z0-9-]+:v\d+(?:\.\d+)*$/i.test(storageKey)) {
-    errors.push(`Storage key "${storageKey}" must be course-specific and versioned.`);
-  }
-
-  milestones.forEach((milestone, index) => {
-    const location = `Milestone ${index + 1}`;
-    if (!milestone.id.trim()) errors.push(`${location} has no id.`);
-    if (!milestone.label.trim()) errors.push(`${location} has no label.`);
-    if (!milestone.targetId.trim()) errors.push(`${location} has no targetId.`);
-    if (!completionTypes.has(milestone.type)) errors.push(`${location} has an unsupported type.`);
-    if (typeof milestone.required !== "boolean") errors.push(`${location} must declare required as a boolean.`);
-    if (ids.has(milestone.id)) errors.push(`Duplicate completion id "${milestone.id}".`);
-    if (targetIds.has(milestone.targetId)) errors.push(`Duplicate completion target "${milestone.targetId}".`);
-    if (milestone.threshold !== undefined && (milestone.type !== "watch" || !Number.isFinite(milestone.threshold) || milestone.threshold <= 0 || milestone.threshold > 1)) {
-      errors.push(`${location} has an invalid watch threshold.`);
-    }
-    ids.add(milestone.id);
-    targetIds.add(milestone.targetId);
-  });
-
-  if (errors.length) throw new Error(`Invalid completion configuration:\n- ${errors.join("\n- ")}`);
-}
-
-validateCompletionConfiguration(completionMilestones, completionSettings.storageKey);
