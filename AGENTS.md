@@ -2,7 +2,7 @@
 
 This repository is a reusable Astro course shell.
 
-- Keep Astro on the established `7.3.8` baseline unless the user explicitly requests another reviewed migration. The supported Node.js floor is `22.12.0`.
+- Keep Astro on the established `7.3.8` baseline unless the user explicitly requests another reviewed migration. The supported Node.js floor is `22.19.0`, matching the pinned dependency tree.
 - Reuse the existing Astro, Tailwind, layout, component and interaction foundation.
 - Build every course from its approved storyboard, mood board and supplied assets. The storyboard controls content, sequence and activity requirements; the mood board controls branding, imagery and course-specific composition.
 - Compose courses from the premium reusable component library and shared typography/spacing tokens. Choose only patterns that serve the learning design; never insert every available component as a gallery.
@@ -59,6 +59,7 @@ This repository is a reusable Astro course shell.
 - Preserve the approved tracking rules and defaults: ordinary VIEW content completes immediately on visible viewport entry, WATCH uses unique-range thresholds, SUBMIT and COMPLETE remain attempt-based, EXPLORE requires its children, and milestones retain equal weighting, persistence and restoration. Hidden content never earns VIEW credit. Keep learner-facing Reset Progress absent; activity-level Retry/Clear controls may remain.
 - Exclude optional resources, navigation, footer copy and Back to top from required completion.
 - Validate unique lesson routes, milestone and target IDs, exploration children, working triggers, a course-specific versioned storage key, browser persistence, LMS suspend/resume and isolation from stale standalone progress. A lesson with no required activities passes through sequential unlocking; an entirely empty requirement set never reports LMS completion.
+- Store reflection text only in private browser storage scoped to a known learner, or in memory for the current page when the approved requirement is merely a valid response. Never put learner text in LMS suspend data. Require durable text storage only when the storyboard explicitly calls for it, and explain unavailable storage to the learner.
 
 ### Handover readiness
 

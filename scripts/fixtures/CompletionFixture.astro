@@ -35,7 +35,7 @@ const config: CourseConfig = {
   <form id="fixture-question" data-completion-id="fixture-question"><label><input type="radio" name="answer" data-completion-option /> Any valid attempt counts</label><button type="submit">Submit</button></form>
   <ExploreGroup id="fixture-explore" title="Explore fixture" variant="accordion" items={[{ id: "one", title: "One", body: "One" }, { id: "two", title: "Two", body: "Two" }]} />
   <ExploreGroup id="fixture-tabs" title="Tab fixture" variant="tabs" items={[{ id: "first", title: "First", body: "First" }, { id: "second", title: "Second", body: "Second" }]} />
-  <button id="fixture-complete" type="button" data-completion-id="fixture-complete">Complete event</button><button id="fixture-optional" type="button" data-completion-id="fixture-optional">Optional event</button>
+  <button id="fixture-complete" type="button" data-completion-id="fixture-complete" data-completion-trigger="complete">Complete event</button><button id="fixture-optional" type="button" data-completion-id="fixture-optional">Optional event</button>
 </main></div>
 <script>
   document.querySelector("#fixture-question")?.addEventListener("submit", (event) => event.preventDefault());

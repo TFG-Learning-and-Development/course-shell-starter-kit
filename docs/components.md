@@ -80,7 +80,7 @@ For every configured lesson, the Progress panel must show its completed/required
 
 ## Shared theme
 
-Do not hard-code course colours inside components. Configure the custom properties at the top of `src/styles/global.css`, and contrast-check every replacement against the surface where it appears. The light- and dark-surface focus tokens are intentionally separate.
+Do not hard-code course colours inside components. Configure `courseConfig.theme` and `courseConfig.brand` in `src/data/course-config.ts`; `CourseLayout.astro` maps them to shared custom properties. The values in `src/styles/global.css` are neutral preview defaults. Contrast-check the configured colours against their surfaces; light- and dark-surface focus tokens remain separate.
 
 The Overview/hero gradient must use `--course-accent-strong` and `--course-accent` so it follows the supplied visual-board palette without layout or typography changes. Do not add starter-specific hero accent values.
 
@@ -97,7 +97,7 @@ For every new or adapted interaction, inset the content and its navigation from 
 - `PremiumAssessment`: the default single-choice assessment and knowledge-check pattern. Pass a unique `id`, semantic `title`, short learner instruction and typed `question` with options and configured feedback. The component uses one dark gradient rounded panel, heading and theme-accent rule, a light icon question card and feedback in the left column, and large clickable radio cards in the right column, separated by a subtle desktop divider. It stacks without the divider on mobile. A deliberate selection shows feedback and internally submits a valid attempt immediately, including an incorrect choice; empty rendering and restoration do not create an attempt. The chosen answer and its feedback restore through shared course state. Configure its milestone as `submit`; do not add a separate Submit button or reuse this selection rule for matching.
 - `FlipCards` and `RevealGroup`: variable-length exploration sets. Configure `requiredItems` from their item IDs.
 - `CourseCarousel`: variable-length image/copy sequence; set `tracked` only when every slide is an approved requirement.
-- `StepGroup`: keyboard-operable tabs plus previous/next controls, restoration and child exploration events.
+- `StepGroup`: keyboard-operable tabs plus previous/next controls, restoration and child exploration events. Its initially selected step earns credit only after the panel is visible; navigating through every step then satisfies the configured children.
 - `ItemExplorer`: optional categories, variable item choices, per-item image galleries and detail lists. Selecting an item dispatches its exploration event.
 - `MatchingActivity`: variable prompts/options, persistent selections and valid-attempt submission feedback. Configure its milestone as `submit`.
 - `ReflectionActivity`: saves text only to course- and activity-specific browser storage; LMS text is learner-isolated when an LMS learner ID exists. A valid save dispatches `complete`.

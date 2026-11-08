@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.19.0"
   },
   "scripts": {
     "dev": "astro dev",
@@ -24,5 +24,8 @@
     "@emnapi/core": "1.11.3",
     "@emnapi/runtime": "1.11.3",
     "playwright": "1.59.1"
+  },
+  "overrides": {
+    "undici": "8.12.2"
   }
 }

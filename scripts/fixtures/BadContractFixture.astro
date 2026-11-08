@@ -1,0 +1,18 @@
+---
+import CourseProgress from "../../src/components/CourseProgress.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+import "../../src/styles/global.css";
+const config: CourseConfig = {
+  identity: { id: "bad-contract-fixture", title: "Invalid activity fixture", description: "" },
+  brand: { homeLabel: "Fixture home" }, theme: defaultCourseTheme,
+  lessons: [{ id: "start", path: "/", label: "Start" }],
+  completion: { storageKey: "astro-course-progress:bad-contract-fixture:v1", sequentialUnlocking: false, milestones: [
+    { id: "missing-view", label: "Missing view", type: "view", targetId: "missing-view", path: "/", required: true },
+    { id: "bad-submit", label: "Bad submit", type: "submit", targetId: "bad-submit", path: "/", required: true },
+    { id: "bad-explore", label: "Bad explore", type: "explore", targetId: "bad-explore", path: "/", required: true, requiredItems: ["alpha"] },
+  ] },
+  package: { identifier: "bad-contract-fixture-scorm-12", filename: "Bad-Contract-Fixture.zip", launchFile: "index.html", title: "Invalid activity fixture" },
+};
+validateCourseConfig(config);
+---
+<!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>Invalid activity fixture</title></head><body><div data-course-path="/"><CourseProgress {config} /><main><form id="bad-submit" data-completion-id="bad-submit"><button type="submit">Submit</button></form><section id="bad-explore" data-completion-id="bad-explore" data-required-items='["alpha"]'><span data-explore-item="alpha">Alpha</span></section></main></div></body></html>

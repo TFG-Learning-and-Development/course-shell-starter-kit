@@ -1,0 +1,25 @@
+---
+import CourseProgress from "../../src/components/CourseProgress.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+import "../../src/styles/global.css";
+
+const childIds = Array.from({ length: 38 }, (_, index) => `item-${index}-${"x".repeat(54)}`);
+const milestones = [
+  ...Array.from({ length: 120 }, (_, index) => ({ id: `evidence-${index}`, label: `Evidence ${index}`, type: "complete" as const, targetId: `evidence-${index}`, path: "/", required: true })),
+  { id: "capacity-explore", label: "Capacity exploration", type: "explore" as const, targetId: "capacity-explore", path: "/", required: false, requiredItems: childIds },
+];
+const config: CourseConfig = {
+  identity: { id: "large-fixture", title: "Large state fixture", description: "" },
+  brand: { homeLabel: "Fixture home" },
+  theme: defaultCourseTheme,
+  lessons: [{ id: "start", path: "/", label: "Start" }],
+  completion: { storageKey: "astro-course-progress:large-fixture:v1", sequentialUnlocking: true, milestones },
+  package: { identifier: "large-fixture-scorm-12", filename: "Large-Fixture.zip", launchFile: "index.html", title: "Large state fixture" },
+};
+validateCourseConfig(config);
+---
+<!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>Large state fixture</title></head>
+<body><div data-course-path="/"><CourseProgress {config} /><main><h1>Large state fixture</h1>{milestones.slice(0, 120).map((milestone) => <button id={milestone.targetId} data-completion-id={milestone.id} data-completion-trigger="complete" type="button">{milestone.label}</button>)}<section id="capacity-explore" data-completion-id="capacity-explore" data-required-items={JSON.stringify(childIds)}>{childIds.map((id) => <button type="button" data-explore-item={id}>{id}</button>)}</section></main></div></body></html>
+<script>
+  document.querySelectorAll<HTMLButtonElement>("#capacity-explore [data-explore-item]").forEach((button) => button.addEventListener("click", () => window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: "capacity-explore", itemId: button.dataset.exploreItem } }))));
+</script>

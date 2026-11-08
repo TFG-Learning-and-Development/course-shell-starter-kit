@@ -1,0 +1,28 @@
+---
+import CourseProgress from "../../src/components/CourseProgress.astro";
+import StepGroup from "../../src/components/StepGroup.astro";
+import CourseCarousel from "../../src/components/CourseCarousel.astro";
+import ExploreGroup from "../../src/components/ExploreGroup.astro";
+import ItemExplorer from "../../src/components/ItemExplorer.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+import "../../src/styles/global.css";
+const config: CourseConfig = {
+  identity: { id: "interaction-fixture", title: "Interaction state fixture", description: "" },
+  brand: { homeLabel: "Fixture home" }, theme: defaultCourseTheme,
+  lessons: [{ id: "start", path: "/", label: "Start" }],
+  completion: { storageKey: "astro-course-progress:interaction-fixture:v1", sequentialUnlocking: false, milestones: [
+    { id: "fixture-steps", label: "Steps", type: "explore", targetId: "fixture-steps", path: "/", required: true, requiredItems: ["first", "second"] },
+    { id: "fixture-carousel", label: "Carousel", type: "explore", targetId: "fixture-carousel", path: "/", required: true, requiredItems: ["one", "two"] },
+    { id: "fixture-tabs", label: "Tabs", type: "explore", targetId: "fixture-tabs", path: "/", required: true, requiredItems: ["alpha", "beta"] },
+    { id: "fixture-items", label: "Items", type: "explore", targetId: "fixture-items", path: "/", required: true, requiredItems: ["plan", "reflect"] },
+  ] },
+  package: { identifier: "interaction-fixture-scorm-12", filename: "Interaction-Fixture.zip", launchFile: "index.html", title: "Interaction state fixture" },
+};
+validateCourseConfig(config);
+---
+<!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>Interaction state fixture</title></head><body><div data-course-path="/"><CourseProgress {config} /><main>
+  <StepGroup id="fixture-steps" title="Steps" steps={[{ id: "first", title: "First", body: "First visible step." }, { id: "second", title: "Second", body: "Second step." }]} />
+  <CourseCarousel id="fixture-carousel" label="Carousel" tracked items={[{ id: "one", title: "One", body: "First slide.", media: { src: "/assets/demo/item-plan.svg", alt: "Plan icon" } }, { id: "two", title: "Two", body: "Second slide.", media: { src: "/assets/demo/item-reflect.svg", alt: "Reflection icon" } }]} />
+  <ExploreGroup id="fixture-tabs" title="Tabs" variant="tabs" items={[{ id: "alpha", title: "Alpha", body: "First tab." }, { id: "beta", title: "Beta", body: "Second tab." }]} />
+  <ItemExplorer id="fixture-items" title="Items" categories={[{ id: "prepare", label: "Prepare" }, { id: "apply", label: "Apply" }]} items={[{ id: "plan", categoryId: "prepare", title: "Plan", summary: "Plan detail.", images: [{ src: "/assets/demo/item-plan.svg", alt: "Plan icon" }], details: [] }, { id: "reflect", categoryId: "apply", title: "Reflect", summary: "Reflect detail.", images: [{ src: "/assets/demo/item-reflect.svg", alt: "Reflection icon" }], details: [] }]} />
+</main></div></body></html>

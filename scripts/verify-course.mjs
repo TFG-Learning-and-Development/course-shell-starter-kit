@@ -24,6 +24,30 @@ const monitor = (page, label, origin) => {
 const waitCompleted = (page, id, key = builtConfig.completion.storageKey, timeout = 8000) => page.waitForFunction(({ id, key }) => {
   try { return JSON.parse(localStorage.getItem(key) || "{}").completed?.includes(id); } catch { return false; }
 }, { id, key }, { timeout });
+const installMockLms = (context, values, withoutNavigationApi = false) => context.addInitScript(({ values, withoutNavigationApi }) => {
+  if (withoutNavigationApi) Object.defineProperty(window, "navigation", { configurable: true, value: undefined });
+  const key = "__readiness_lms_mock";
+  if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ values, calls: [], errors: [], active: false, finished: false, error: "0", failElement: "" }));
+  const read = () => JSON.parse(localStorage.getItem(key));
+  const write = (state) => localStorage.setItem(key, JSON.stringify(state));
+  const call = (name, element, value) => { const state = read(); state.calls.push([name, element, value]); return state; };
+  window.API = {
+    LMSInitialize() { const state = call("LMSInitialize"); if (state.active) { state.errors.push("101 repeated initialize"); state.error = "101"; write(state); return "false"; } state.active = true; state.finished = false; state.error = "0"; write(state); return "true"; },
+    LMSFinish() { const state = call("LMSFinish"); if (!state.active || state.finished) { state.errors.push("101 duplicate finish"); state.error = "101"; write(state); return "false"; } state.active = false; state.finished = true; state.error = "0"; write(state); return "true"; },
+    LMSGetValue(element) { const state = call("LMSGetValue", element); state.error = state.active ? "0" : "301"; write(state); return state.active ? state.values[element] || "" : ""; },
+    LMSSetValue(element, value) { const state = call("LMSSetValue", element, value); if (!state.active || state.failElement === element) { state.errors.push(`${state.active ? "101 forced failure" : "301 set after finish"}: ${element}`); state.error = state.active ? "101" : "301"; write(state); return "false"; } state.values[element] = value; state.error = "0"; write(state); return "true"; },
+    LMSCommit() { const state = call("LMSCommit"); if (!state.active) state.errors.push("301 commit after finish"); state.error = state.active ? "0" : "301"; write(state); return state.active ? "true" : "false"; },
+    LMSGetLastError() { return read().error; }, LMSGetErrorString(code) { return code === "101" ? "General exception" : code === "301" ? "Not initialized" : "No error"; }, LMSGetDiagnostic() { return ""; },
+  };
+}, { values, withoutNavigationApi });
+const lmsState = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("__readiness_lms_mock")));
+const lmsCalls = (state, name) => state.calls.filter((call) => call[0] === name).length;
+const lmsSeed = (extra = {}) => ({ "cmi.core.lesson_status": "not attempted", "cmi.core.lesson_location": "/", "cmi.core.student_id": "readiness-learner", "cmi.suspend_data": "", ...extra });
+const milestones = builtConfig.completion.milestones;
+const schema = JSON.stringify(milestones.map(({ id, path, type, targetId, requiredItems, threshold, required }) => [id, path, type, targetId, requiredItems || [], threshold ?? null, required]));
+let hash = 0xcbf29ce484222325n;
+for (const character of schema) hash = BigInt.asUintN(64, (hash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
+const suspend = (omitted = []) => JSON.stringify({ v: builtConfig.completion.storageKey, s: hash.toString(16).padStart(16, "0"), c: milestones.flatMap((item, index) => omitted.includes(item.id) ? [] : [index]), w: {}, e: Object.fromEntries(milestones.flatMap((item, index) => item.type === "explore" ? [[index, item.requiredItems]] : [])), u: {} });
 
 for (const lesson of builtConfig.lessons) assert(await exists(lessonFile(lesson.path)), `Missing configured production lesson: ${lesson.path}`);
 assert(!(await exists(path.join(dist, "__verify-components", "index.html"))), "Verification fixtures entered the production build.");
@@ -32,7 +56,7 @@ try {
   await run(process.execPath, [astro, "build", "--outDir", fixtureDist], {
     cwd: process.cwd(), env: { ...process.env, COURSE_VERIFY_COMPONENTS: "1", PUBLIC_COURSE_VERIFY: "1" },
   });
-  for (const route of ["__verify-components", "__verify-completion", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty"]) {
+  for (const route of ["__verify-components", "__verify-completion", "__verify-large", "__verify-interactions", "__verify-bad-contract", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty"]) {
     assert(await exists(path.join(fixtureDist, route, "index.html")), `Missing ${route} fixture.`);
   }
   const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -58,7 +82,7 @@ try {
       assert(await page.title() === builtConfig.identity.title, `${width}px browser title changed`);
       assert((await page.locator(".skip-link").count()) === 1, `${width}px skip link missing`);
       assert((await page.locator(".course-links a[data-lesson-path]").count()) === builtConfig.lessons.length, `${width}px configured lesson links missing`);
-      assert((await page.locator(".course-links a[data-section-link]").count()) === (await page.locator("[data-nav-section]").count()), `${width}px section links do not match content`);
+      assert((await page.locator(".course-links__heading").textContent()) === "Course lessons", `${width}px lessons heading changed`);
       assert((await page.locator("[data-progress-lessons] .course-progress__lesson").count()) === builtConfig.lessons.length, `${width}px progress lesson count changed`);
       assert((await page.locator(".footer-inner > p").textContent()) === "Return to People Connect to continue", `${width}px footer text changed`);
       assert((await page.locator(".footer-inner > p a, .footer-inner > p button, [data-progress-reset]").count()) === 0, `${width}px learner control entered footer or Progress`);
@@ -71,39 +95,26 @@ try {
       assert(await progress.evaluate((node) => getComputedStyle(node).outlineStyle !== "none"), `${width}px progress focus invisible`);
       await progress.press("Enter");
       assert(await page.locator("[data-progress-panel]").isVisible(), `${width}px progress panel did not open`);
-      assert((await page.locator("[data-checklist-items] li").count()) === builtConfig.completion.milestones.filter((item) => item.required && item.path === "/").length, `${width}px configured checklist count changed`);
+      const lessonRows = page.locator("[data-progress-lesson]");
+      for (const lesson of builtConfig.lessons) {
+        const row = page.locator(`[data-progress-lesson="${lesson.id}"]`);
+        assert((await row.count()) > 0, `${width}px missing progress row for ${lesson.path}`);
+      }
+      assert((await page.locator("[data-progress-course-count]").textContent()).includes(`of ${builtConfig.completion.milestones.filter((item) => item.required).length} completed`), `${width}px course-wide required count changed`);
+      const firstToDo = page.locator('[data-progress-lesson] .course-progress__activity-group').first();
+      if (await firstToDo.count()) assert((await firstToDo.locator("h3").textContent()) === "Still to do", `${width}px missing outstanding heading`);
       await page.keyboard.press("Escape");
       assert(!(await page.locator("[data-progress-panel]").isVisible()), `${width}px progress panel did not close`);
-      if (width <= 1280) {
-        const toggle = page.locator(".nav-toggle");
-        await toggle.press("Enter");
-        assert(await page.locator(".course-links").isVisible(), `${width}px mobile lesson disclosure did not open`);
-        await toggle.press("Escape");
-        assert(!(await page.locator(".course-links").isVisible()), `${width}px mobile lesson disclosure did not close`);
-        const sectionLink = page.locator('.course-links a[data-section-link]').first();
-        if (await sectionLink.count()) {
-          const hash = await sectionLink.getAttribute("href");
-          await toggle.click();
-          await sectionLink.click();
-          assert(new URL(page.url()).hash === hash && !(await page.locator(".course-links").isVisible()), `${width}px section navigation did not work`);
-        }
-      } else {
-        assert(await page.locator(".course-links").isVisible(), "Desktop lesson navigation is hidden");
-        const fiveLabelsFit = await page.evaluate(() => {
-          const links = document.querySelector(".course-links");
-          const logo = document.querySelector(".brand-link").getBoundingClientRect();
-          const nav = links.getBoundingClientRect();
-          const progress = document.querySelector("[data-progress-trigger]").getBoundingClientRect();
-          return logo.right < nav.left && nav.right < progress.left && progress.right <= innerWidth - 12;
-        });
-        assert(fiveLabelsFit, `${width}px header crowds five realistic lesson labels`);
-        const sectionLink = page.locator('.course-links a[data-section-link]').first();
-        if (await sectionLink.count()) {
-          const hash = await sectionLink.getAttribute("href");
-          await sectionLink.click();
-          assert(new URL(page.url()).hash === hash, `${width}px section navigation did not work`);
-        }
-      }
+      const toggle = page.locator(".lessons-toggle");
+      await toggle.press("Enter");
+      assert(await page.locator(".course-links").isVisible(), `${width}px Lessons dropdown did not open`);
+      assert((await page.locator(".course-links a[data-lesson-path]").count()) >= 1, `${width}px no unlocked lesson link`);
+      await progress.click();
+      assert(!(await page.locator(".course-links").isVisible()) && await page.locator("[data-progress-panel]").isVisible(), `${width}px Lessons and Progress remained open together`);
+      await page.keyboard.press("Escape");
+      await toggle.click();
+      await page.keyboard.press("Escape");
+      assert(!(await page.locator(".course-links").isVisible()) && await toggle.evaluate((node) => document.activeElement === node), `${width}px Lessons Escape/focus failed`);
       if (width <= 375) {
         const footer = await page.locator(".footer-inner").evaluate((node) => {
           const style = getComputedStyle(node); const link = node.querySelector("a");
@@ -132,6 +143,146 @@ try {
       assert(!(await page.locator("[data-access-pending]").count()), `Configured lesson remained locked: ${lesson.path}`);
     }
     await context.close();
+
+    const navigationContext = await browser.newContext();
+    await installMockLms(navigationContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(["practice-reflection"]) }));
+    const lmsPage = await navigationContext.newPage();
+    monitor(lmsPage, "simulated LMS navigation", origin);
+    await lmsPage.goto(origin, { waitUntil: "networkidle" });
+    await lmsPage.locator(".lessons-toggle").click();
+    await lmsPage.locator('.course-links a[data-lesson-path="/topics/practice/"]').click();
+    await lmsPage.waitForURL(`${origin}/topics/practice/`);
+    let mock = await lmsState(lmsPage);
+    assert(lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && mock.errors.length === 0, `Lesson navigation changed active LMS session: ${JSON.stringify({ initialize: lmsCalls(mock, "LMSInitialize"), finish: lmsCalls(mock, "LMSFinish"), errors: mock.errors })}`);
+    await lmsPage.goBack({ waitUntil: "networkidle" });
+    mock = await lmsState(lmsPage);
+    assert(lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && mock.errors.length === 0, "Back navigation finished or reinitialized the LMS session");
+    await lmsPage.locator('.footer-inner a[href="#top"]').click();
+    await lmsPage.goto(`${origin}/__verify-components/`, { waitUntil: "networkidle" });
+    mock = await lmsState(lmsPage);
+    assert(lmsCalls(mock, "LMSFinish") === 1 && mock.values["cmi.core.lesson_status"] === "incomplete" && mock.errors.length === 0, "Same-page hash or actual exit finalized incorrectly");
+    await navigationContext.close();
+
+    const fallbackContext = await browser.newContext();
+    await installMockLms(fallbackContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(["practice-reflection"]) }), true);
+    const fallback = await fallbackContext.newPage();
+    await fallback.goto(origin, { waitUntil: "networkidle" });
+    await fallback.evaluate(() => { const link = document.createElement("a"); link.href = "/topics/practice/"; link.textContent = "Canceled lesson"; link.addEventListener("click", (event) => event.preventDefault()); document.body.append(link); link.click(); });
+    await fallback.evaluate(() => { const link = document.createElement("a"); link.href = "/topics/practice/"; link.target = "_blank"; link.addEventListener("click", (event) => event.preventDefault()); document.body.append(link); link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true })); });
+    await fallback.locator('.footer-inner a[href="#top"]').click();
+    await fallback.goto(`${origin}/__verify-components/`, { waitUntil: "networkidle" });
+    mock = await lmsState(fallback);
+    assert(lmsCalls(mock, "LMSFinish") === 1 && lmsCalls(mock, "LMSInitialize") === 1 && mock.errors.length === 0, `Navigation API fallback retained a canceled or hash navigation flag: ${JSON.stringify({ initialize: lmsCalls(mock, "LMSInitialize"), finish: lmsCalls(mock, "LMSFinish"), errors: mock.errors })}`);
+    await fallbackContext.close();
+
+    const fallbackTransitionContext = await browser.newContext();
+    await installMockLms(fallbackTransitionContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(["practice-reflection"]) }), true);
+    const fallbackTransition = await fallbackTransitionContext.newPage();
+    await fallbackTransition.goto(origin, { waitUntil: "networkidle" });
+    await fallbackTransition.locator(".lessons-toggle").click();
+    await fallbackTransition.locator('.course-links a[data-lesson-path="/topics/practice/"]').click();
+    await fallbackTransition.waitForURL(`${origin}/topics/practice/`);
+    mock = await lmsState(fallbackTransition);
+    assert(lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && mock.errors.length === 0, "Fallback lesson transition did not reuse the active LMS session");
+    await fallbackTransitionContext.close();
+
+    const recoveryContext = await browser.newContext();
+    await installMockLms(recoveryContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend() }));
+    const recovery = await recoveryContext.newPage();
+    await recovery.goto(origin, { waitUntil: "networkidle" });
+    mock = await lmsState(recovery);
+    assert(mock.values["cmi.core.lesson_status"] === "completed" && mock.errors.length === 0, "Fully validated earned LMS record did not recover its status");
+    await recoveryContext.close();
+
+    const legacyRecord = JSON.parse(suspend(["practice-reflection"]));
+    legacyRecord.u = Object.fromEntries(Array.from({ length: 25 }, (_, index) => [`slot-${index}`, "x".repeat(64)]));
+    assert(JSON.stringify(legacyRecord.u).length > 1800 && JSON.stringify(legacyRecord).length < 4096, "Legacy oversized-UI fixture does not cross the intended boundary");
+    const legacyContext = await browser.newContext();
+    await installMockLms(legacyContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": JSON.stringify(legacyRecord) }));
+    const legacy = await legacyContext.newPage();
+    await legacy.goto(origin, { waitUntil: "networkidle" });
+    assert((await legacy.locator("[data-progress-percent]").textContent()) !== "0%" && (await legacy.locator("[data-progress-save-error]").textContent()).includes("Earned course progress was preserved"), "Legacy optional UI overflow discarded valid earned evidence or hid the repair");
+    await legacyContext.close();
+
+    const freshContext = await browser.newContext();
+    await installMockLms(freshContext, lmsSeed());
+    const fresh = await freshContext.newPage();
+    await fresh.goto(origin, { waitUntil: "networkidle" });
+    mock = await lmsState(fresh);
+    assert(mock.values["cmi.core.lesson_status"] !== "completed", "Fresh LMS attempt completed without requirements");
+    await fresh.locator("#assessment input[type=radio]").last().check();
+    mock = await lmsState(fresh);
+    const assessmentIndex = milestones.findIndex((item) => item.id === "assessment");
+    assert(JSON.parse(mock.values["cmi.suspend_data"] || "{}").c?.includes(assessmentIndex) && (await fresh.locator("#assessment [data-assessment-feedback-copy]").textContent()).includes("Incorrect response."), "Wrong but valid answer did not earn attempt credit and feedback");
+    await freshContext.close();
+
+    const restoredAnswer = JSON.parse(suspend(["assessment"]));
+    restoredAnswer.u = { "assessment:answer": 1 };
+    const answerContext = await browser.newContext();
+    await installMockLms(answerContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": JSON.stringify(restoredAnswer) }));
+    const answerPage = await answerContext.newPage();
+    await answerPage.goto(origin, { waitUntil: "networkidle" });
+    const answerMock = await lmsState(answerPage);
+    assert((await answerPage.locator("#assessment input[type=radio]:checked").count()) === 1 && (await answerPage.locator("#assessment [data-assessment-feedback-copy]").textContent()).includes("Incorrect response.") && !JSON.parse(answerMock.values["cmi.suspend_data"]).c.includes(assessmentIndex), "Restored answer created an unearned new attempt");
+    await answerContext.close();
+
+    const interactionContext = await browser.newContext();
+    await installMockLms(interactionContext, lmsSeed());
+    const interaction = await interactionContext.newPage();
+    monitor(interaction, "simulated LMS interactions", origin);
+    await interaction.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
+    const exploredIds = async (id) => { const saved = (await lmsState(interaction)).values["cmi.suspend_data"]; return JSON.parse(saved || "{}").e?.[id] || []; };
+    await interaction.locator("#fixture-steps [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
+    await interaction.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[0]?.includes("first"));
+    await interaction.locator("#fixture-steps [data-step-next]").click();
+    assert(JSON.stringify(await exploredIds(0)) === JSON.stringify(["first", "second"]), "Initial visible step or Next failed to earn every required child after LMS launch");
+    await interaction.locator("#fixture-carousel").scrollIntoViewIfNeeded();
+    await interaction.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("one"));
+    await interaction.locator("#fixture-carousel [data-carousel-next]").click();
+    assert(JSON.stringify(await exploredIds(1)) === JSON.stringify(["one", "two"]), "Tracked carousel initial or next slide failed after LMS launch");
+    await interaction.locator("#fixture-tabs").scrollIntoViewIfNeeded();
+    await interaction.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[2]?.includes("alpha"));
+    await interaction.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
+    assert(JSON.stringify(await exploredIds(2)) === JSON.stringify(["alpha", "beta"]), "Tracked tabs did not earn the visible initial panel and selected panel");
+    await interaction.locator("#fixture-items [data-category-choice=apply]").click();
+    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect"]), "Explorer credited an unselected item");
+    await interaction.reload({ waitUntil: "networkidle" });
+    assert(await interaction.locator("#fixture-items [data-explorer-item=reflect]").isVisible() && (await interaction.locator("#fixture-items [data-category-choice=apply]").getAttribute("aria-pressed")) === "true", "Explorer did not restore category and item atomically");
+    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect"]), "Explorer restoration emitted new exploration");
+    assert((await interaction.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" && (await interaction.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta", "Carousel or tabs did not restore active content");
+    await interactionContext.close();
+
+    const failedSaveContext = await browser.newContext();
+    await installMockLms(failedSaveContext, lmsSeed());
+    const failedSave = await failedSaveContext.newPage();
+    await failedSave.goto(`${origin}/__verify-large/`, { waitUntil: "networkidle" });
+    await failedSave.evaluate(() => { const key = "__readiness_lms_mock"; const value = JSON.parse(localStorage.getItem(key)); value.failElement = "cmi.suspend_data"; localStorage.setItem(key, JSON.stringify(value)); window.dispatchEvent(new CustomEvent("course-progress:complete", { detail: { activityId: "evidence-0" } })); });
+    let failedMock = await lmsState(failedSave);
+    assert(!JSON.parse(failedMock.values["cmi.suspend_data"] || "{}").c?.includes(0) && await failedSave.locator("[data-progress-save-error]").isVisible(), "Failed LMS save granted credit or concealed the error");
+    await failedSave.evaluate(() => { const key = "__readiness_lms_mock"; const value = JSON.parse(localStorage.getItem(key)); value.failElement = ""; localStorage.setItem(key, JSON.stringify(value)); window.dispatchEvent(new CustomEvent("course-progress:complete", { detail: { activityId: "evidence-0" } })); });
+    failedMock = await lmsState(failedSave);
+    assert(JSON.parse(failedMock.values["cmi.suspend_data"] || "{}").c?.includes(0) && failedMock.values["cmi.core.lesson_status"] !== "completed", "Failed LMS save could not recover without premature completion");
+    await failedSaveContext.close();
+
+    const reflectionContext = await browser.newContext();
+    await installMockLms(reflectionContext, lmsSeed({ "cmi.core.student_id": "", "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(milestones.filter((item) => item.path !== "/").map((item) => item.id)) }));
+    const reflection = await reflectionContext.newPage();
+    await reflection.goto(`${origin}/topics/practice/`, { waitUntil: "networkidle" });
+    await reflection.locator("#practice-reflection textarea").fill("Private readiness response sentinel");
+    await reflection.locator("#practice-reflection button[type=submit]").click();
+    const reflectionMock = await lmsState(reflection);
+    assert((await reflection.locator("#practice-reflection [data-reflection-status]").textContent()).includes("open page only") && !reflectionMock.values["cmi.suspend_data"].includes("Private readiness response sentinel"), "Identity-free reflection leaked text or failed to explain session-only storage");
+    await reflectionContext.close();
+
+    const storageContext = await browser.newContext();
+    await installMockLms(storageContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(milestones.filter((item) => item.path !== "/").map((item) => item.id)) }));
+    await storageContext.addInitScript(() => { const nativeSet = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key.endsWith("-text")) throw new Error("Private storage unavailable"); return nativeSet.call(this, key, value); }; });
+    const storage = await storageContext.newPage();
+    await storage.goto(`${origin}/topics/practice/`, { waitUntil: "networkidle" });
+    await storage.locator("#practice-reflection textarea").fill("Browser storage sentinel");
+    await storage.locator("#practice-reflection button[type=submit]").click();
+    assert((await storage.locator("#practice-reflection [data-reflection-status]").textContent()).includes("open page only") && !(await lmsState(storage)).values["cmi.suspend_data"].includes("Browser storage sentinel"), "Unavailable browser text storage did not use the private session fallback");
+    await storageContext.close();
 
     const routes = await browser.newPage();
     monitor(routes, "route fixture", origin);
@@ -187,13 +338,62 @@ try {
     assert((await fixtureState()).completed?.includes("fixture-complete") && !(await fixtureState()).completed?.includes("fixture-hidden-view"), "Standalone activity progress did not restore safely");
     await fixture.close();
 
+    const large = await browser.newPage();
+    monitor(large, "large state fixture", origin);
+    await large.goto(`${origin}/__verify-large/`, { waitUntil: "networkidle" });
+    await large.evaluate(() => {
+      for (let index = 0; index < 120; index += 1) window.dispatchEvent(new CustomEvent("course-progress:complete", { detail: { activityId: `evidence-${index}` } }));
+      for (let index = 0; index < 23; index += 1) window.dispatchEvent(new CustomEvent("course-progress:test-set-ui", { detail: { key: `slot-${index}`, value: "x".repeat(64) } }));
+    });
+    const largeKey = "astro-course-progress:large-fixture:v1";
+    const largeState = () => large.evaluate((key) => JSON.parse(localStorage.getItem(key) || "{}"), largeKey);
+    assert((await largeState()).completed.length === 120 && Object.keys((await largeState()).ui).length === 23, `Large course evidence or valid optional UI failed to save: ${JSON.stringify({ earned: (await largeState()).completed.length, ui: Object.keys((await largeState()).ui).length })}`);
+    await large.evaluate(() => window.dispatchEvent(new CustomEvent("course-progress:test-set-ui", { detail: { key: "slot-23", value: "x".repeat(64) } })));
+    assert(Object.keys((await largeState()).ui).length === 23 && await large.locator("[data-progress-save-error]").isVisible(), "Oversized optional UI was accepted or not reported");
+    await large.reload({ waitUntil: "networkidle" });
+    assert((await largeState()).completed.length === 120 && (await large.locator("[data-progress-percent]").textContent()) === "100%", "Large earned state did not restore");
+    await large.close();
+
+    const capacityContext = await browser.newContext();
+    await installMockLms(capacityContext, lmsSeed());
+    const capacity = await capacityContext.newPage();
+    await capacity.goto(`${origin}/__verify-large/`, { waitUntil: "networkidle" });
+    const capacityResult = await capacity.evaluate(() => {
+      const children = [...document.querySelectorAll("#capacity-explore [data-explore-item]")].map((node) => node.dataset.exploreItem);
+      children.forEach((itemId) => window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: "capacity-explore", itemId } })));
+      let dropped = false;
+      for (let index = 0; index < 24; index += 1) {
+        window.dispatchEvent(new CustomEvent("course-progress:test-set-ui", { detail: { key: `slot-${index}`, value: "x".repeat(64) } }));
+        const saved = JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}");
+        if (index > 0 && Object.keys(saved.u || {}).length === 0) { dropped = true; break; }
+      }
+      const saved = JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}");
+      return { dropped, explored: saved.e?.[120]?.length, ui: Object.keys(saved.u || {}).length };
+    });
+    assert(capacityResult.dropped && capacityResult.explored === 38 && capacityResult.ui === 0 && await capacity.locator("[data-progress-save-error]").isVisible(), `LMS capacity handling lost evidence or concealed optional UI removal: ${JSON.stringify(capacityResult)}`);
+    await capacityContext.close();
+
     const components = await browser.newPage();
     monitor(components, "component fixture", origin);
     await components.goto(`${origin}/__verify-components/`, { waitUntil: "networkidle" });
     assert((await components.locator(".responsive-table").count()) > 0, "Shared component fixture is missing");
     assert(await components.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "Shared component fixture overflows");
+    await components.locator("#gallery-knowledge-check input[type=radio]").first().check();
+    assert(await components.locator("#gallery-knowledge-check [data-assessment-feedback]").isVisible(), "Knowledge-check feedback did not appear on selection");
+    assert(!(await components.locator("#gallery-assessment input[type=radio]:checked").count()), "Independent assessment instance was changed");
+    await components.locator("#gallery-explorer [data-category-choice=apply]").click();
+    assert(await components.locator("#gallery-explorer [data-explorer-item=reflect]").isVisible() && (await components.locator("#gallery-explorer [data-item-choice=reflect]").getAttribute("aria-pressed")) === "true", "Explorer category and active item diverged");
     await components.close();
+    const badContract = await browser.newPage();
+    const contractErrors = [];
+    badContract.on("console", (message) => { if (message.type() === "error") contractErrors.push(message.text()); });
+    await badContract.goto(`${origin}/__verify-bad-contract/`, { waitUntil: "networkidle" });
+    assert(contractErrors.some((message) => message.includes('Unresolved target "missing-view"')) &&
+      contractErrors.some((message) => message.includes('SUBMIT target "bad-submit"')) &&
+      contractErrors.some((message) => message.includes('EXPLORE target "bad-explore"')) &&
+      await badContract.locator("[data-progress-save-error]").isVisible(), "Missing target or activity trigger failed to surface a clear setup error");
+    await badContract.close();
     assert(errors.length === 0, `Browser errors: ${errors.join("; ")}`);
   } finally { await browser.close(); await new Promise((resolve) => server.close(resolve)); }
-  console.log(`Course browser verification passed: responsive shell, typography, footer, ${builtConfig.lessons.length} configured routes, ${builtConfig.completion.milestones.length} milestones, immediate VIEW, activity fixtures and unlocking variants.`);
+  console.log(`Course Chromium verification passed: responsive shell, typography, footer, ${builtConfig.lessons.length} configured routes, ${builtConfig.completion.milestones.length} milestones, immediate VIEW, unlocking variants, large state and capacity boundaries, interaction restore, and strict simulated LMS navigation, recovery, save failure and reflection privacy.`);
 } finally { await rm(fixtureDist, { recursive: true, force: true }); }

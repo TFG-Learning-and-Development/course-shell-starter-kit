@@ -46,7 +46,8 @@ const itemIds = items.map((item) => item.id);
 </section>
 
 <script>
-  document.querySelectorAll<HTMLElement>("[data-explore-group]").forEach((root) => {
+  import { courseStateReady } from "../lib/course-state";
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-explore-group]").forEach((root) => {
     if (root.dataset.exploreReady === "true") return;
     root.dataset.exploreReady = "true";
     const activityId = root.dataset.completionId || "";
@@ -74,6 +75,7 @@ const itemIds = items.map((item) => item.id);
         if (isTabs) {
           root.querySelectorAll<HTMLButtonElement>("[role=tab]").forEach((tab) => { const selected = tab === button; tab.setAttribute("aria-selected", String(selected)); tab.tabIndex = selected ? 0 : -1; });
           root.querySelectorAll<HTMLElement>("[role=tabpanel]").forEach((panel) => { panel.hidden = panel.dataset.exploreItem !== itemId; });
+          courseState.set(`${activityId}:active`, itemId);
         } else if (isCards) {
           const pressed = button.getAttribute("aria-pressed") === "true";
           button.setAttribute("aria-pressed", String(!pressed));
@@ -97,7 +99,7 @@ const itemIds = items.map((item) => item.id);
 
     window.addEventListener("course-progress:explore-state", ((event: CustomEvent<{ activityId: string; itemIds: string[] }>) => {
       if (event.detail.activityId !== activityId) return;
-      event.detail.itemIds.forEach((itemId) => explored.add(itemId)); render();
+      explored.clear(); event.detail.itemIds.forEach((itemId) => explored.add(itemId)); render();
     }) as EventListener);
     window.addEventListener("course-progress:reset", () => {
       explored.clear();
@@ -107,6 +109,17 @@ const itemIds = items.map((item) => item.id);
       render();
     });
     window.dispatchEvent(new CustomEvent("course-progress:request-restore", { detail: { activityId, apply: (itemIds: string[]) => { itemIds.forEach((itemId) => explored.add(itemId)); render(); } } }));
-    if (isTabs) record(root.querySelector<HTMLButtonElement>("[role=tab]")?.dataset.exploreItem || "");
-  });
+    if (isTabs) {
+      const tabs = [...root.querySelectorAll<HTMLButtonElement>("[role=tab]")];
+      const restored = courseState.get<string>(`${activityId}:active`, "");
+      const active = tabs.find((tab) => tab.dataset.exploreItem === restored) || tabs[0];
+      tabs.forEach((tab) => { const selected = tab === active; tab.setAttribute("aria-selected", String(selected)); tab.tabIndex = selected ? 0 : -1; });
+      root.querySelectorAll<HTMLElement>("[role=tabpanel]").forEach((panel) => { panel.hidden = panel.dataset.exploreItem !== active?.dataset.exploreItem; });
+      const creditVisible = () => { const panel = root.querySelector<HTMLElement>("[role=tabpanel]:not([hidden])"); if (!panel || document.visibilityState !== "visible" || panel.closest("[hidden]") || explored.has(panel.dataset.exploreItem || "")) return; const box = panel.getBoundingClientRect(); if (box.width && box.height && box.bottom > 0 && box.top < innerHeight) record(panel.dataset.exploreItem || ""); };
+      const observer = new IntersectionObserver(creditVisible, { threshold: 0.01 });
+      root.querySelectorAll<HTMLElement>("[role=tabpanel]").forEach((panel) => observer.observe(panel));
+      document.addEventListener("visibilitychange", creditVisible);
+      requestAnimationFrame(creditVisible);
+    }
+  }));
 </script>

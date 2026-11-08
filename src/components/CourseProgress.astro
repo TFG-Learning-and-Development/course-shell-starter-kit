@@ -45,7 +45,7 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
   import { courseUrl } from "../lib/course-url";
 
   type RangePair = [number, number];
-  type PersistedState = { completed: string[]; watchRanges: Record<string, RangePair[]>; explored: Record<string, string[]>; ui: Record<string, unknown> };
+  type PersistedState = { completed: string[]; watchRanges: Record<string, RangePair[]>; watchDurations: Record<string, number>; explored: Record<string, string[]>; ui: Record<string, unknown> };
   type Milestone = { id: string; label: string; type: "view" | "watch" | "submit" | "explore" | "complete" | "optional"; targetId: string; path?: string; requiredItems?: string[]; required: boolean; threshold?: number };
 
   document.querySelectorAll<HTMLElement>("[data-course-progress]").forEach(async (root) => {
@@ -66,30 +66,41 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
     let signatureHash = 0xcbf29ce484222325n;
     for (const character of signatureSource) signatureHash = BigInt.asUintN(64, (signatureHash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
     const signature = signatureHash.toString(16).padStart(16, "0");
-    const defaultState = (): PersistedState => ({ completed: [], watchRanges: {}, explored: {}, ui: {} });
+    const defaultState = (): PersistedState => ({ completed: [], watchRanges: {}, watchDurations: {}, explored: {}, ui: {} });
     const milestoneIds = new Set(milestones.map((milestone) => milestone.id));
+    const maxUiChars = 1800;
+    const maxSuspendChars = 4096;
+    const validUiValue = (value: unknown, depth = 0): boolean => {
+      if (depth > 4) return false;
+      if (value === null || typeof value === "boolean") return true;
+      if (typeof value === "number") return Number.isSafeInteger(value) && value >= 0 && value < 1000;
+      if (typeof value === "string") return value.length <= 64;
+      if (Array.isArray(value)) return value.length <= 32 && value.every((item) => validUiValue(item, depth + 1));
+      if (typeof value === "object") return Object.entries(value).length <= 8 && Object.entries(value).every(([key, item]) => key.length <= 64 && validUiValue(item, depth + 1));
+      return false;
+    };
+    const validUi = (ui: Record<string, unknown>) => {
+      try {
+        const json = JSON.stringify(ui);
+        return Boolean(json && json.length <= maxUiChars && Object.keys(ui).length <= 64 &&
+          Object.entries(ui).every(([key, value]) => key.length <= 64 && validUiValue(value)));
+      } catch { return false; }
+    };
     const validState = (value: unknown): PersistedState | null => {
       if (!value || typeof value !== "object") return null;
       const candidate = value as PersistedState;
       if (!Array.isArray(candidate.completed) || !candidate.completed.every((id) => typeof id === "string" && milestoneIds.has(id))) return null;
       if (!candidate.watchRanges || typeof candidate.watchRanges !== "object" || Array.isArray(candidate.watchRanges)) return null;
+      if (!candidate.watchDurations || typeof candidate.watchDurations !== "object" || Array.isArray(candidate.watchDurations)) return null;
       if (!candidate.explored || typeof candidate.explored !== "object" || Array.isArray(candidate.explored)) return null;
       if (!candidate.ui || typeof candidate.ui !== "object" || Array.isArray(candidate.ui)) return null;
-      const uiJson = JSON.stringify(candidate.ui);
-      if (!uiJson || uiJson.length > 1800 || Object.keys(candidate.ui).length > 64) return null;
-      const validUiValue = (value: unknown, depth = 0): boolean => {
-        if (depth > 4) return false;
-        if (value === null || typeof value === "boolean") return true;
-        if (typeof value === "number") return Number.isSafeInteger(value) && value >= 0 && value < 1000;
-        if (typeof value === "string") return value.length <= 64;
-        if (Array.isArray(value)) return value.length <= 32 && value.every((item) => validUiValue(item, depth + 1));
-        if (typeof value === "object") return Object.entries(value).length <= 8 && Object.entries(value).every(([key, item]) => key.length <= 64 && validUiValue(item, depth + 1));
-        return false;
-      };
-      if (Object.values(candidate.ui).some((value) => !validUiValue(value))) return null;
+      if (!validUi(candidate.ui)) return null;
       for (const [id, ranges] of Object.entries(candidate.watchRanges)) {
         if (milestones.find((item) => item.id === id)?.type !== "watch" || !Array.isArray(ranges) ||
           !ranges.every((range) => Array.isArray(range) && range.length === 2 && range.every((number) => typeof number === "number" && Number.isFinite(number) && number >= 0) && range[1] > range[0])) return null;
+      }
+      for (const [id, duration] of Object.entries(candidate.watchDurations)) {
+        if (milestones.find((item) => item.id === id)?.type !== "watch" || typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0) return null;
       }
       for (const [id, items] of Object.entries(candidate.explored)) {
         const milestone = milestones.find((item) => item.id === id);
@@ -107,10 +118,21 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
           try { requiredItems = target ? JSON.parse(target.dataset.requiredItems || "[]") : milestone.requiredItems || []; } catch { return null; }
           if (!requiredItems.length || !requiredItems.every((item) => candidate.explored[id]?.includes(item))) return null;
         }
-        if (milestone.type === "watch" && !candidate.watchRanges[id]?.length) return null;
+        if (milestone.type === "watch") {
+          const ranges = candidate.watchRanges[id];
+          if (!ranges?.length) return null;
+          const duration = candidate.watchDurations[id];
+          if (duration) {
+            const ordered = [...ranges].sort((left, right) => left[0] - right[0]);
+            let covered = 0; let end = 0;
+            for (const [start, stop] of ordered) { if (stop > duration + 0.01) return null; covered += Math.max(0, stop - Math.max(start, end)); end = Math.max(end, stop); }
+            if (covered / duration + 0.0001 < (milestone.threshold ?? 0.8)) return null;
+          }
+        }
       }
       return candidate;
     };
+    let discardedLegacyUi = false;
     const fromSuspendData = (raw: string): PersistedState | null => {
       try {
         const compact = JSON.parse(raw);
@@ -118,28 +140,36 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
         const idAt = (index: number) => Number.isInteger(index) ? milestones[index]?.id : undefined;
         const completed = compact.c.map(idAt);
         const watchRanges = Object.fromEntries(Object.entries(compact.w).map(([index, ranges]) => [idAt(Number(index)), ranges]));
+        const watchDurations = Object.fromEntries(Object.entries(compact.d || {}).map(([index, duration]) => [idAt(Number(index)), duration]));
         const explored = Object.fromEntries(Object.entries(compact.e).map(([index, items]) => [idAt(Number(index)), items]));
-        return validState({ completed, watchRanges, explored, ui: compact.u || {} });
+        const essential = { completed, watchRanges, watchDurations, explored, ui: {} };
+        if (!validState(essential)) return null;
+        const restored = validState({ ...essential, ui: compact.u || {} });
+        if (restored) return restored;
+        discardedLegacyUi = true;
+        return essential;
       } catch { return null; }
     };
-    const toSuspendData = () => {
+    const toSuspendData = (snapshot = state) => {
       const indexOf = (id: string) => milestones.findIndex((milestone) => milestone.id === id);
       return JSON.stringify({
         v: storageKey,
         s: signature,
-        c: state.completed.map(indexOf),
-        w: Object.fromEntries(Object.entries(state.watchRanges).map(([id, ranges]) => [indexOf(id), ranges])),
-        e: Object.fromEntries(Object.entries(state.explored).map(([id, items]) => [indexOf(id), items])),
-        u: state.ui,
+        c: snapshot.completed.map(indexOf),
+        w: Object.fromEntries(Object.entries(snapshot.watchRanges).map(([id, ranges]) => [indexOf(id), ranges])),
+        d: Object.fromEntries(Object.entries(snapshot.watchDurations).map(([id, duration]) => [indexOf(id), duration])),
+        e: Object.fromEntries(Object.entries(snapshot.explored).map(([id, items]) => [indexOf(id), items])),
+        u: snapshot.ui,
       });
     };
     const scorm = new ScormSession();
     const launch = await scorm.launch();
     let state = defaultState();
     let lmsStateValid = true;
+    let restoredFromLms = false;
     if (launch.mode === "lms" && launch.suspendData) {
       const restored = fromSuspendData(launch.suspendData);
-      if (restored) state = restored;
+      if (restored) { state = restored; restoredFromLms = true; }
       else {
         lmsStateValid = false;
         console.error("[scorm] Invalid or version-mismatched cmi.suspend_data; progress is read-only to preserve the existing LMS record.");
@@ -152,6 +182,7 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
           const compatible = {
             completed: Array.isArray(parsed.completed) ? parsed.completed.filter((id: unknown) => typeof id === "string" && milestoneIds.has(id)) : [],
             watchRanges: Object.fromEntries(Object.entries(parsed.watchRanges || {}).filter(([id]) => milestones.some((item) => item.id === id && item.type === "watch"))),
+            watchDurations: Object.fromEntries(Object.entries(parsed.watchDurations || {}).filter(([id]) => milestones.some((item) => item.id === id && item.type === "watch"))),
             explored: Object.fromEntries(Object.entries(parsed.explored || {}).filter(([id]) => milestones.some((item) => item.id === id && item.type === "explore"))),
             ui: parsed.ui || {},
           };
@@ -205,24 +236,37 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
       sessionStorage.removeItem(accessNoticeKey);
     } catch { /* The course remains accessible without the redirect notice. */ }
     let leavingForLesson = false;
-    const isLessonUrl = (url: string) => {
+    let fallbackClear: number | undefined;
+    const isLessonDocumentUrl = (url: string, reload = false) => {
       try {
         const destination = new URL(url, location.href);
-        return destination.origin === location.origin && lessonPaths.some((path) => courseUrl(path) === destination.pathname);
+        if (destination.origin !== location.origin || !lessonPaths.some((path) => courseUrl(path) === destination.pathname)) return false;
+        if (reload) return true;
+        // Hash changes stay in this document and must not affect a later exit.
+        return destination.pathname !== location.pathname || destination.search !== location.search ||
+          (!destination.hash && !location.hash);
       } catch { return false; }
     };
     // The Navigation API also sees reloads and Back/Forward traversals. Keep
     // the click fallback for browsers that do not expose it.
     const navigation = (window as Window & { navigation?: EventTarget }).navigation;
-    navigation?.addEventListener("navigate", ((event: Event & { destination?: { url?: string } }) => {
-      leavingForLesson = Boolean(event.destination?.url && isLessonUrl(event.destination.url));
+    navigation?.addEventListener("navigate", ((event: Event & { destination?: { url?: string }; navigationType?: string }) => {
+      leavingForLesson = Boolean(event.destination?.url && isLessonDocumentUrl(event.destination.url, event.navigationType === "reload"));
+      queueMicrotask(() => { if (event.defaultPrevented) leavingForLesson = false; });
     }) as EventListener);
     navigation?.addEventListener("navigateerror", () => { leavingForLesson = false; });
-    document.addEventListener("click", (event) => {
-      if (navigation || event.defaultPrevented) return;
+    navigation?.addEventListener("navigatesuccess", () => { leavingForLesson = false; });
+    document.addEventListener("click", (event: MouseEvent) => {
+      if (navigation || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = (event.target as Element).closest<HTMLAnchorElement>("a[href]");
-      if (!link) return;
-      if (isLessonUrl(link.href)) leavingForLesson = true;
+      if (!link || link.hasAttribute("download") || (link.target && link.target !== "_self") || !isLessonDocumentUrl(link.href)) return;
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        leavingForLesson = true;
+        if (fallbackClear !== undefined) window.clearTimeout(fallbackClear);
+        // A canceled fallback navigation must not classify a later window close.
+        fallbackClear = window.setTimeout(() => { leavingForLesson = false; }, 1500);
+      });
     });
     const trigger = root.querySelector<HTMLButtonElement>("[data-progress-trigger]");
     const panel = root.querySelector<HTMLElement>("[data-progress-panel]");
@@ -238,16 +282,35 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
       saveError.textContent = message;
       saveError.hidden = false;
     };
+    if (discardedLegacyUi) showSaveError("Saved activity positions exceeded the current LMS limit and were discarded. Earned course progress was preserved.");
     if (launch.mode === "failed") showSaveError("LMS progress is unavailable. Reopen the course from your learning platform before continuing.");
     if (launch.mode === "lms" && !lmsStateValid) showSaveError("Saved LMS progress could not be read. Reopen the course from your learning platform before continuing.");
 
     const milestoneFor = (id: string) => milestones.find((milestone) => milestone.id === id);
     const targetFor = (milestone: Milestone) => milestone.path && milestone.path !== currentPath ? null : document.getElementById(milestone.targetId);
+    const validatedTargets = new Set<string>();
     milestones.forEach((milestone) => {
       if (milestone.path && milestone.path !== currentPath) return;
       const target = targetFor(milestone);
-      if (!target) console.error(`[course-progress] Unresolved target "${milestone.targetId}" for milestone "${milestone.id}".`);
-      else if (target.dataset.completionId !== milestone.id) console.error(`[course-progress] Target "${milestone.targetId}" must declare data-completion-id="${milestone.id}".`);
+      let problem = "";
+      if (!target) problem = `Unresolved target "${milestone.targetId}" for milestone "${milestone.id}".`;
+      else if (target.dataset.completionId !== milestone.id) problem = `Target "${milestone.targetId}" must declare data-completion-id="${milestone.id}".`;
+      else if (milestone.type === "watch" && !(target instanceof HTMLVideoElement)) problem = `WATCH target "${milestone.targetId}" must be a video.`;
+      else if (milestone.type === "submit" && !((target instanceof HTMLFormElement ? target : target.querySelector("form"))?.querySelector("[data-completion-option]"))) problem = `SUBMIT target "${milestone.targetId}" needs a form with a completion option.`;
+      else if (milestone.type === "complete" && target.dataset.completionTrigger !== "complete") problem = `COMPLETE target "${milestone.targetId}" must declare data-completion-trigger="complete".`;
+      else if (milestone.type === "explore") {
+        let children: string[] = [];
+        try { children = JSON.parse(target.dataset.requiredItems || "[]"); } catch { /* Report below. */ }
+        const declared = milestone.requiredItems || [];
+        const rendered = [...target.querySelectorAll<HTMLElement>("[data-flip-id], [data-step-id], [data-item-choice], [data-reveal-id], [data-carousel-id], [data-explore-item]")]
+          .map((node) => node.dataset.flipId || node.dataset.stepId || node.dataset.itemChoice || node.dataset.revealId || node.dataset.carouselId || node.dataset.exploreItem);
+        const actionable = (id: string) => [...target.querySelectorAll<HTMLElement>("[data-flip-id], [data-step-id], [data-item-choice], [data-reveal-id], [data-carousel-id], [data-explore-item]")]
+          .some((node) => (node.dataset.flipId || node.dataset.stepId || node.dataset.itemChoice || node.dataset.revealId || node.dataset.carouselId || node.dataset.exploreItem) === id &&
+            (node instanceof HTMLButtonElement || Boolean(node.querySelector("button")) || Boolean(node.dataset.carouselId && target.querySelector("[data-carousel-next], [data-carousel-prev]"))));
+        if (!Array.isArray(children) || !children.length || children.length !== declared.length || declared.some((id, index) => children[index] !== id) || declared.some((id) => !rendered.includes(id) || !actionable(id))) problem = `EXPLORE target "${milestone.targetId}" has missing or mismatched required children or triggers.`;
+      }
+      if (problem) { console.error(`[course-progress] ${problem}`); showSaveError(`Course activity setup error: ${problem}`); }
+      else validatedTargets.add(milestone.id);
     });
 
     const mergeRanges = (ranges: RangePair[]) => {
@@ -268,6 +331,10 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
 
     const persist = (allowCompletion = false): boolean => {
       state.completed = Array.from(completed);
+      if (!validState(state)) {
+        showSaveError("Progress state is invalid and was not saved. Reopen the course or contact support; earned requirements were not discarded.");
+        return false;
+      }
       if (launch.mode === "standalone") {
         try {
           window.localStorage.setItem(storageKey, JSON.stringify(state));
@@ -279,8 +346,22 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
         }
       }
       if (launch.mode === "lms" && lmsStateValid) {
-        const saved = scorm.save(toSuspendData(), currentPath, allowCompletion && requiredMilestones.length > 0 && requiredMilestones.every((milestone) => completed.has(milestone.id)));
-        if (saved && saveError) saveError.hidden = true;
+        let payload = toSuspendData();
+        let optionalUiDropped = false;
+        if (payload.length > maxSuspendChars && Object.keys(state.ui).length) {
+          const essential = { ...state, ui: {} };
+          const essentialPayload = toSuspendData(essential);
+          if (essentialPayload.length <= maxSuspendChars) { payload = essentialPayload; optionalUiDropped = true; }
+        }
+        if (payload.length > maxSuspendChars) {
+          showSaveError(`Required progress needs ${payload.length} LMS characters; SCORM 1.2 permits ${maxSuspendChars}. Nothing was truncated or sent. Contact the course owner.`);
+          return false;
+        }
+        const saved = scorm.save(payload, currentPath, allowCompletion && requiredMilestones.length > 0 && requiredMilestones.every((milestone) => completed.has(milestone.id)));
+        if (saved && optionalUiDropped) {
+          state.ui = {};
+          showSaveError("Required progress was saved, but optional activity positions exceeded LMS capacity and were not retained.");
+        } else if (saved && saveError) saveError.hidden = true;
         if (!saved) showSaveError("Progress could not be saved to the LMS. Keep this page open and try the activity again.");
         return saved;
       }
@@ -466,28 +547,38 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
       publishState();
     };
 
-    const markComplete = (id: string) => {
-      if (launch.mode === "failed" || (launch.mode === "lms" && !lmsStateValid)) return;
-      if (completed.has(id)) return;
+    const markComplete = (id: string): boolean => {
+      if (launch.mode === "failed" || (launch.mode === "lms" && !lmsStateValid) || !validatedTargets.has(id)) return false;
+      if (completed.has(id)) return true;
       completed.add(id);
-      if (!persist(true)) {
+      const saved = persist(true);
+      if (!saved) {
         completed.delete(id);
         state.completed = Array.from(completed);
       }
       render();
+      return saved;
     };
 
-    provideCourseState({
+    const sharedState = {
       mode: launch.mode,
       learnerId: launch.learnerId,
-      get: (key, fallback) => (state.ui[key] === undefined ? fallback : state.ui[key] as typeof fallback),
+      get: <T,>(key: string, fallback: T): T => (state.ui[key] === undefined ? fallback : state.ui[key] as T),
       set: (key: string, value: unknown) => {
-        state.ui[key] = value;
-        persist();
+        const previous = state.ui;
+        state.ui = { ...previous, [key]: value };
+        if (!validUi(state.ui)) {
+          state.ui = previous;
+          showSaveError("Optional activity state is too large or invalid to save. Required progress is unchanged.");
+          return;
+        }
+        if (!persist()) state.ui = previous;
       },
       explored: (activityId: string) => state.explored[activityId] || [],
       completed: (activityId: string) => completed.has(activityId),
-    });
+    };
+    provideCourseState(sharedState);
+    if (import.meta.env.PUBLIC_COURSE_VERIFY === "1") window.addEventListener("course-progress:test-set-ui", ((event: CustomEvent<{ key: string; value: unknown }>) => sharedState.set(event.detail.key, event.detail.value)) as EventListener);
 
     window.addEventListener("course-progress:request-restore", ((event: CustomEvent<{ activityId: string; apply?: (itemIds: string[]) => void }>) => {
       const id = event.detail.activityId;
@@ -505,11 +596,12 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
       let requiredItems: string[] = [];
       try { requiredItems = target ? JSON.parse(target.dataset.requiredItems || "[]") : []; } catch { console.error(`[course-progress] Invalid required-item data for "${activityId}".`); }
       if (!requiredItems.includes(itemId)) return;
-      const itemIds = new Set(state.explored[activityId] || []);
+      const previousItems = state.explored[activityId] || [];
+      const itemIds = new Set(previousItems);
       itemIds.add(itemId);
       state.explored[activityId] = Array.from(itemIds);
-      if (requiredItems.length > 0 && requiredItems.every((id) => itemIds.has(id)) && !completed.has(activityId)) markComplete(activityId);
-      else persist();
+      const saved = requiredItems.length > 0 && requiredItems.every((id) => itemIds.has(id)) && !completed.has(activityId) ? markComplete(activityId) : persist();
+      if (!saved) state.explored[activityId] = previousItems;
       window.dispatchEvent(new CustomEvent("course-progress:explore-state", { detail: { activityId, itemIds: state.explored[activityId] } }));
     }) as EventListener);
 
@@ -541,12 +633,18 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
 
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persist(); });
     window.addEventListener("pagehide", () => {
+      if (fallbackClear !== undefined) window.clearTimeout(fallbackClear);
       if (leavingForLesson) {
-        if (launch.mode === "lms" && lmsStateValid) scorm.save(toSuspendData(), currentPath, false);
+        persist(false);
         try { sessionStorage.setItem(internalNavigationKey, "1"); } catch { /* The next page can still probe the active API. */ }
-      } else scorm.exit(lmsStateValid ? toSuspendData() : null, currentPath);
+      } else {
+        persist(false);
+        scorm.exit(null, currentPath);
+      }
+      leavingForLesson = false;
     });
     window.addEventListener("pageshow", (event) => {
+      leavingForLesson = false;
       if (!event.persisted) return;
       try { sessionStorage.setItem(internalNavigationKey, "1"); } catch { /* A reload still restores LMS state. */ }
       window.location.reload();
@@ -587,6 +685,7 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
         const captured: RangePair[] = [...(state.watchRanges[milestone.id] || [])];
         for (let index = 0; index < video.played.length; index += 1) captured.push([video.played.start(index), video.played.end(index)]);
         state.watchRanges[milestone.id] = mergeRanges(captured);
+        if (Number.isFinite(video.duration) && video.duration > 0) state.watchDurations[milestone.id] = video.duration;
         if (watchedFraction(milestone.id, video.duration) >= (milestone.threshold ?? 0.8)) markComplete(milestone.id);
         const now = performance.now();
         if (now - lastPersist > 800) { persist(); lastPersist = now; }
@@ -599,6 +698,13 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
     });
 
     render();
+    if (launch.mode === "lms" && restoredFromLms && lmsStateValid && launch.status === "incomplete" &&
+      requiredMilestones.length > 0 && requiredMilestones.every((milestone) => completed.has(milestone.id) && (milestone.type !== "watch" || Boolean(state.watchDurations[milestone.id]))) &&
+      milestones.filter((milestone) => milestone.path === currentPath).every((milestone) => validatedTargets.has(milestone.id)) && validState(state)) {
+      // A previous commit may have saved all evidence before the status write failed.
+      // Retry status only from a fully validated, nonempty restored record.
+      persist(true);
+    }
     window.setTimeout(() => {
       Object.entries(state.explored).forEach(([activityId, itemIds]) => window.dispatchEvent(new CustomEvent("course-progress:explore-state", { detail: { activityId, itemIds } })));
       completed.forEach((activityId) => window.dispatchEvent(new CustomEvent("course-progress:restore-complete", { detail: { activityId, complete: true } })));

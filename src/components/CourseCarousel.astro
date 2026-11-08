@@ -9,5 +9,44 @@ const { id, label, items, tracked = false } = Astro.props as Props;
   <div class="premium-carousel__controls"><button class="premium-action" type="button" data-carousel-prev disabled>Previous</button><span data-carousel-count aria-live="polite">1 of {items.length}</span><button class="premium-action" type="button" data-carousel-next>Next</button></div>
 </div>
 <script>
-  document.querySelectorAll<HTMLElement>("[data-premium-carousel]").forEach((root) => { if (root.dataset.ready === "true") return; root.dataset.ready = "true"; const slides = [...root.querySelectorAll<HTMLElement>("[data-carousel-id]")]; const previous = root.querySelector<HTMLButtonElement>("[data-carousel-prev]"); const next = root.querySelector<HTMLButtonElement>("[data-carousel-next]"); const count = root.querySelector<HTMLElement>("[data-carousel-count]"); let active = 0; const show = (index: number) => { active = index; slides.forEach((slide, position) => slide.hidden = position !== index); if (previous) previous.disabled = index === 0; if (next) next.disabled = index === slides.length - 1; if (count) count.textContent = `${index + 1} of ${slides.length}`; const itemId = slides[index]?.dataset.carouselId; if (root.dataset.completionId && itemId) window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId } })); }; previous?.addEventListener("click", () => show(Math.max(0, active - 1))); next?.addEventListener("click", () => show(Math.min(slides.length - 1, active + 1))); if (root.dataset.completionId) show(0); });
+  import { courseStateReady } from "../lib/course-state";
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-premium-carousel]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+    const slides = [...root.querySelectorAll<HTMLElement>("[data-carousel-id]")];
+    const previous = root.querySelector<HTMLButtonElement>("[data-carousel-prev]");
+    const next = root.querySelector<HTMLButtonElement>("[data-carousel-next]");
+    const count = root.querySelector<HTMLElement>("[data-carousel-count]");
+    const visited = new Set(courseState.explored(root.id));
+    let active = courseState.get<number>(`${root.id}:active`, 0);
+    if (!Number.isInteger(active) || active < 0 || active >= slides.length) active = 0;
+    const creditVisible = () => {
+      const slide = slides[active];
+      const itemId = slide?.dataset.carouselId;
+      if (!root.dataset.completionId || !slide || !itemId || visited.has(itemId) || slide.hidden || slide.closest("[hidden]") || document.visibilityState !== "visible") return;
+      const box = slide.getBoundingClientRect();
+      if (box.width && box.height && box.bottom > 0 && box.top < innerHeight) window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId } }));
+    };
+    const show = (index: number, record = true) => {
+      active = index;
+      slides.forEach((slide, position) => { slide.hidden = position !== index; });
+      if (previous) previous.disabled = index === 0;
+      if (next) next.disabled = index === slides.length - 1;
+      if (count) count.textContent = `${index + 1} of ${slides.length}`;
+      if (record) { courseState.set(`${root.id}:active`, index); creditVisible(); }
+    };
+    previous?.addEventListener("click", () => show(Math.max(0, active - 1)));
+    next?.addEventListener("click", () => show(Math.min(slides.length - 1, active + 1)));
+    window.addEventListener("course-progress:explore-state", ((event: CustomEvent<{ activityId: string; itemIds: string[] }>) => {
+      if (event.detail.activityId !== root.id) return;
+      visited.clear(); event.detail.itemIds.forEach((itemId) => visited.add(itemId));
+    }) as EventListener);
+    show(active, false);
+    if (root.dataset.completionId) {
+      const observer = new IntersectionObserver(creditVisible, { threshold: 0.01 });
+      slides.forEach((slide) => observer.observe(slide));
+      document.addEventListener("visibilitychange", creditVisible);
+      requestAnimationFrame(creditVisible);
+    }
+  }));
 </script>

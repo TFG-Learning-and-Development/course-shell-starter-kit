@@ -8,13 +8,14 @@ The two `@emnapi` development dependencies satisfy optional WASM compiler runtim
 
 ## Requirements
 
-- Node.js `>=22.12.0` (tested with Node.js `24.11.1`)
+- Node.js `>=22.19.0` (successful local checks used Node.js `24.11.1`; the minimum version still needs a direct test)
 - npm `>=9.6.5`
 - npm package-lock v3 (`package-lock.json` must remain committed)
 
 ## Setup and commands
 
 ```sh
+node --version
 npm ci
 npx playwright install chromium
 npm run dev
@@ -25,7 +26,7 @@ npm run verify:scorm
 npm run preview
 ```
 
-Use `npm ci` for a clean, lockfile-exact install. On a fresh Linux CI image, Playwright may also require `npx playwright install --with-deps chromium`. Do not replace the lockfile with a lockfile from another package manager.
+Confirm `node --version` is at least `22.19.0` before setup, then use `npm ci` for a clean, lockfile-exact install. On a fresh Linux CI image, Playwright may also require `npx playwright install --with-deps chromium`. Do not replace the lockfile with a lockfile from another package manager.
 
 The starter runs locally without credentials, environment variables or an LMS connection. A packaged launch uses only the SCORM 1.2 API supplied by its LMS window. Its only external dependencies are the packages recorded in `package-lock.json`; no external runtime services, fonts, images or analytics are used.
 
@@ -73,7 +74,7 @@ Every new course must inherit this shared system through `CourseLayout.astro`. P
 
 ### Theme colours
 
-Configure course colours in the `:root` block at the top of `src/styles/global.css`:
+Configure course colours, surfaces and gradients in `courseConfig.theme` and the logo in `courseConfig.brand` in `src/data/course-config.ts`. The layout maps these settings to shared CSS tokens; the `:root` block in `src/styles/global.css` provides neutral defaults for isolated previews. Relevant tokens include:
 
 - `--course-accent` and `--course-accent-strong`
 - `--nav-hover-background` and `--nav-hover-indicator`
