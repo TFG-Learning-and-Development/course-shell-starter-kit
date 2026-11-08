@@ -23,14 +23,31 @@ This repository is a reusable Astro course shell.
 
 ### Component authoring policy
 
-- Act as a senior UX/UI designer and Astro developer during every course build. Start with the storyboard's learning purpose, approved content and required evidence; use the mood board for branding, imagery and course-specific composition.
-- Reuse a suitable shared component first. Adapt it when the learning need warrants it. If no component serves the need, create a new premium reusable component; never add an activity merely to use a pattern or populate the gallery.
-- A new component must have clear hierarchy, editorial composition where suitable, considered spacing, polished interaction states and restrained motion. Inherit shared typography, spacing, theme and focus tokens rather than adding a competing visual system.
-- Support responsive layout, keyboard access, visible focus, readable contrast and reduced motion. Give learners clear instructions, feedback and completion cues where relevant.
-- Inset content and navigation consistently with shared spacing tokens; keep controls clear of card borders, dividers and rounded corners. Let content determine height unless a measured transition needs reserved space, constrain prose to a readable measure, and inspect initial plus active/feedback states at desktop and mobile widths before handover.
-- Use typed content and configuration props, a unique instance ID, and course-agnostic implementation. Do not embed fixed branding, lesson or item counts, course-specific selectors or storage keys.
-- Connect required interactions to the existing tracking and restoration contracts and register only storyboard-approved requirements. Never invent content, questions, feedback or assessment/completion rules when the brief is ambiguous; seek approved direction.
-- Document each new reusable component in `docs/components.md` and add a neutral working example with purpose, editable props, completion behavior and usage to the development-only `scripts/fixtures/ComponentFixture.astro` gallery. Keep gallery state isolated from course progress and LMS communication.
+These instructions apply automatically to every course build and every new or adapted component.
+
+- Act as a senior UX/UI designer and Astro developer. Treat the approved shell's visual and interaction quality as the baseline. Use the storyboard for learning purpose, content, sequence, feedback and completion evidence; use the mood board for branding, imagery and course-specific composition while preserving the shared typography.
+- Before implementation, map each storyboard activity to a suitable existing component, an adaptation or a new component, with a short reason and its completion trigger. Keep this in working notes or the handover; do not add an approval pause for routine design decisions within the approved brief.
+- Reuse a suitable shared component first and adapt it when needed. When the library does not serve the learning purpose, design and implement a new premium reusable component as part of the build. A separate request to create it is not required. Course builds must work from this shell and the supplied inputs without requiring another course repository.
+- Choose interactions that serve the learning design. Do not add activities to fill a gallery, force the storyboard into an unsuitable pattern, or invent learner content, answers, feedback or completion rules. Ask only for missing approved input that materially blocks implementation.
+
+#### Interaction quality requirements
+
+- Establish a clear heading, concise instructions, readable content and a clear next action. Use editorial image/text composition, appropriate surfaces, restrained gradients and depth where they support the approved design. Give icons a purpose and use consistent image proportions.
+- Inherit the shared typography, theme, spacing, radius, focus and motion rules. Keep component-specific styles scoped and driven by tokens. Do not add competing font scales or fixed course colours.
+- Put content, feedback and controls inside deliberate padded regions. Keep buttons clear of options, card edges, dividers and rounded corners in every state. Use shared spacing for heading-to-copy, option gaps and action rows; prevent overlap, clipping and controls sitting on the rim of a panel.
+- Let real content determine height. Reserve space only for a justified transition or feedback layout. Handle long copy, wrapped labels, different item counts and image aspect ratios without empty fixed-height panels or page-level overflow. Preserve the approved assessment composition.
+- Provide consistent initial, hover, selected, focus, disabled, feedback, complete and restored states, plus validation or save-error states where relevant. Make the result and next step understandable without relying only on colour, animation or an icon.
+- Support keyboard operation, semantic controls, accessible names and relationships, visible focus, readable contrast, reduced motion and generous touch targets. Stack or wrap layouts and contain necessary internal scrolling before labels or controls become cramped.
+- Use typed content/configuration props and unique instance IDs. Keep components independent of course branding, lesson or item counts, selectors for a specific course and storage identities. Multiple instances must operate independently.
+- Register only approved required milestones and use the existing tracking, persistence and restoration contracts. Empty rendering, hidden content, navigation and restoration must not invent an attempt. Visible initial exploration follows the approved component rules. Keep reflection privacy and LMS-attempt isolation intact.
+
+#### Review before handover
+
+- Review the actual course content and assets in the rendered component. Inspect initial and active/feedback states at narrow mobile, an intermediate width and desktop, including a responsive breakpoint; verify controls and long labels remain inside their padded regions.
+- Exercise the learner path with mouse/touch and keyboard as appropriate, including valid and empty input, incorrect attempts, moving between items, refresh/resume and applicable save failures. Check more than one instance and representative minimum and larger item counts when adding a reusable pattern.
+- Fix defects found in that review and rerun the relevant checks before handing over. Add meaningful regression coverage for new behaviour and defects such as edge-touching controls, overflow, unintended completion and lost restoration. Preserve the existing build and verification suites.
+- Document the component in `docs/components.md` and add a neutral working example to `scripts/fixtures/ComponentFixture.astro` with its purpose, editable props, completion behaviour and usage. Keep gallery state in memory and isolated from real course progress and LMS communication.
+- Report which components were reused, adapted or created, what was visually inspected and which checks passed. If browser or visual checks cannot run, identify the unverified areas and leave their review pending; do not describe a successful build alone as visual approval or live LMS acceptance.
 
 ## Mandatory course standards
 
