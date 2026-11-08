@@ -4,6 +4,7 @@ import StepGroup from "../../src/components/StepGroup.astro";
 import CourseCarousel from "../../src/components/CourseCarousel.astro";
 import ExploreGroup from "../../src/components/ExploreGroup.astro";
 import ItemExplorer from "../../src/components/ItemExplorer.astro";
+import PremiumAssessment from "../../src/components/PremiumAssessment.astro";
 import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
 import "../../src/styles/global.css";
 const config: CourseConfig = {
@@ -15,6 +16,8 @@ const config: CourseConfig = {
     { id: "fixture-carousel", label: "Carousel", type: "explore", targetId: "fixture-carousel", path: "/", required: true, requiredItems: ["one", "two"] },
     { id: "fixture-tabs", label: "Tabs", type: "explore", targetId: "fixture-tabs", path: "/", required: true, requiredItems: ["alpha", "beta"] },
     { id: "fixture-items", label: "Items", type: "explore", targetId: "fixture-items", path: "/", required: true, requiredItems: ["plan", "reflect"] },
+    { id: "fixture-assessment", label: "Decision", type: "submit", targetId: "fixture-assessment", path: "/", required: true },
+    { id: "fixture-knowledge", label: "Knowledge check", type: "submit", targetId: "fixture-knowledge", path: "/", required: true },
   ] },
   package: { identifier: "interaction-fixture-scorm-12", filename: "Interaction-Fixture.zip", launchFile: "index.html", title: "Interaction state fixture" },
 };
@@ -25,4 +28,6 @@ validateCourseConfig(config);
   <CourseCarousel id="fixture-carousel" label="Carousel" tracked items={[{ id: "one", title: "One", body: "First slide.", media: { src: "/assets/demo/item-plan.svg", alt: "Plan icon" } }, { id: "two", title: "Two", body: "Second slide.", media: { src: "/assets/demo/item-reflect.svg", alt: "Reflection icon" } }]} />
   <ExploreGroup id="fixture-tabs" title="Tabs" variant="tabs" items={[{ id: "alpha", title: "Alpha", body: "First tab." }, { id: "beta", title: "Beta", body: "Second tab." }]} />
   <ItemExplorer id="fixture-items" title="Items" categories={[{ id: "prepare", label: "Prepare" }, { id: "apply", label: "Apply" }]} items={[{ id: "plan", categoryId: "prepare", title: "Plan", summary: "Plan detail.", images: [{ src: "/assets/demo/item-plan.svg", alt: "Plan icon" }], details: [] }, { id: "reflect", categoryId: "apply", title: "Reflect", summary: "Reflect detail.", images: [{ src: "/assets/demo/item-reflect.svg", alt: "Reflection icon" }], details: [] }]} />
+  <PremiumAssessment id="fixture-assessment" title="Choose an action" instruction="Select one response to see feedback." question={{ prompt: "Which action fits the goal?", options: ["Compare against a criterion", "Wait for a timer"], correctIndex: 0, correctFeedback: "A criterion helps.", incorrectFeedback: "A timer does not help." }} />
+  <PremiumAssessment id="fixture-knowledge" title="Check understanding" instruction="Select one response to see feedback." question={{ prompt: "What makes feedback useful?", options: ["A next step", "An unrelated detail"], correctIndex: 0, correctFeedback: "A next step helps.", incorrectFeedback: "Choose a useful next step." }} />
 </main></div></body></html>

@@ -43,11 +43,26 @@ const installMockLms = (context, values, withoutNavigationApi = false) => contex
 const lmsState = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("__readiness_lms_mock")));
 const lmsCalls = (state, name) => state.calls.filter((call) => call[0] === name).length;
 const lmsSeed = (extra = {}) => ({ "cmi.core.lesson_status": "not attempted", "cmi.core.lesson_location": "/", "cmi.core.student_id": "readiness-learner", "cmi.suspend_data": "", ...extra });
-const milestones = builtConfig.completion.milestones;
-const schema = JSON.stringify(milestones.map(({ id, path, type, targetId, requiredItems, threshold, required }) => [id, path, type, targetId, requiredItems || [], threshold ?? null, required]));
-let hash = 0xcbf29ce484222325n;
-for (const character of schema) hash = BigInt.asUintN(64, (hash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
-const suspend = (omitted = []) => JSON.stringify({ v: builtConfig.completion.storageKey, s: hash.toString(16).padStart(16, "0"), c: milestones.flatMap((item, index) => omitted.includes(item.id) ? [] : [index]), w: {}, e: Object.fromEntries(milestones.flatMap((item, index) => item.type === "explore" ? [[index, item.requiredItems]] : [])), u: {} });
+const suspend = (config, omitted = []) => {
+  const milestones = config.completion.milestones;
+  const schema = JSON.stringify(milestones.map(({ id, path, type, targetId, requiredItems, threshold, required }) => [id, path, type, targetId, requiredItems || [], threshold ?? null, required]));
+  let hash = 0xcbf29ce484222325n;
+  for (const character of schema) hash = BigInt.asUintN(64, (hash ^ BigInt(character.charCodeAt(0))) * 0x100000001b3n);
+  return JSON.stringify({
+    v: config.completion.storageKey, s: hash.toString(16).padStart(16, "0"),
+    c: milestones.flatMap((item, index) => omitted.includes(item.id) ? [] : [index]),
+    w: Object.fromEntries(milestones.flatMap((item, index) => item.type === "watch" && !omitted.includes(item.id) ? [[index, [[0, 100]]]] : [])),
+    d: Object.fromEntries(milestones.flatMap((item, index) => item.type === "watch" && !omitted.includes(item.id) ? [[index, 100]] : [])),
+    e: Object.fromEntries(milestones.flatMap((item, index) => item.type === "explore" && !omitted.includes(item.id) ? [[index, item.requiredItems]] : [])),
+    u: {},
+  });
+};
+const fixtureConfig = async (route) => {
+  const html = await readFile(path.join(fixtureDist, ...route.split("/"), "index.html"), "utf8");
+  const value = JSON.parse(html.match(/<script\b[^>]*data-course-progress-config[^>]*>([\s\S]*?)<\/script>/)?.[1] || "null");
+  assert(value?.lessons?.length && value?.milestones?.length, `Missing course progress config in ${route}`);
+  return { lessons: value.lessons, completion: { storageKey: value.storageKey, milestones: value.milestones, sequentialUnlocking: value.sequentialUnlocking } };
+};
 
 for (const lesson of builtConfig.lessons) assert(await exists(lessonFile(lesson.path)), `Missing configured production lesson: ${lesson.path}`);
 assert(!(await exists(path.join(dist, "__verify-components", "index.html"))), "Verification fixtures entered the production build.");
@@ -56,7 +71,7 @@ try {
   await run(process.execPath, [astro, "build", "--outDir", fixtureDist], {
     cwd: process.cwd(), env: { ...process.env, COURSE_VERIFY_COMPONENTS: "1", PUBLIC_COURSE_VERIFY: "1" },
   });
-  for (const route of ["__verify-components", "__verify-completion", "__verify-large", "__verify-interactions", "__verify-bad-contract", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty"]) {
+  for (const route of ["__verify-components", "__verify-completion", "__verify-large", "__verify-interactions", "__verify-bad-contract", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty", "__verify-nav", "__verify-nav/scenario/review"]) {
     assert(await exists(path.join(fixtureDist, route, "index.html")), `Missing ${route} fixture.`);
   }
   const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -129,7 +144,8 @@ try {
     // record. Activity behavior is exercised by the dedicated fixture below.
     const completeState = {
       completed: builtConfig.completion.milestones.map((item) => item.id),
-      watchRanges: Object.fromEntries(builtConfig.completion.milestones.filter((item) => item.type === "watch").map((item) => [item.id, [[0, 1]]])),
+      watchRanges: Object.fromEntries(builtConfig.completion.milestones.filter((item) => item.type === "watch").map((item) => [item.id, [[0, 100]]])),
+      watchDurations: Object.fromEntries(builtConfig.completion.milestones.filter((item) => item.type === "watch").map((item) => [item.id, 100])),
       explored: Object.fromEntries(builtConfig.completion.milestones.filter((item) => item.type === "explore").map((item) => [item.id, item.requiredItems])),
       ui: {},
     };
@@ -144,87 +160,128 @@ try {
     }
     await context.close();
 
+    // These scenarios use a renamed, nested two-lesson fixture. Production
+    // courses are checked above from their own configuration.
+    const navConfig = await fixtureConfig("__verify-nav");
+    assert(navConfig.lessons.length === 2 && navConfig.lessons[1].path === "/scenario/review/", "Nested navigation fixture is incomplete");
+    const navStart = `${origin}/__verify-nav/`;
+    const navReview = `${origin}/__verify-nav/scenario/review/`;
+    const navPartial = suspend(navConfig, ["fixture-response"]);
     const navigationContext = await browser.newContext();
-    await installMockLms(navigationContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(["practice-reflection"]) }));
+    await installMockLms(navigationContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": navPartial }));
     const lmsPage = await navigationContext.newPage();
     monitor(lmsPage, "simulated LMS navigation", origin);
-    await lmsPage.goto(origin, { waitUntil: "networkidle" });
-    await lmsPage.locator(".lessons-toggle").click();
-    await lmsPage.locator('.course-links a[data-lesson-path="/topics/practice/"]').click();
-    await lmsPage.waitForURL(`${origin}/topics/practice/`);
+    await lmsPage.goto(navStart, { waitUntil: "networkidle" });
+    await lmsPage.locator("[data-progress-trigger]").click();
+    assert((await lmsPage.locator("[data-progress-lesson]").count()) === navConfig.lessons.length &&
+      (await lmsPage.locator("[data-progress-lessons]").textContent()).includes(navConfig.lessons[1].label), "Renamed nested lessons did not render from fixture configuration");
+    await lmsPage.locator("[data-progress-close]").click();
+    await lmsPage.locator("[data-fixture-lesson-link]").click();
+    await lmsPage.waitForURL(navReview);
     let mock = await lmsState(lmsPage);
-    assert(lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && mock.errors.length === 0, `Lesson navigation changed active LMS session: ${JSON.stringify({ initialize: lmsCalls(mock, "LMSInitialize"), finish: lmsCalls(mock, "LMSFinish"), errors: mock.errors })}`);
+    assert(lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && mock.errors.length === 0, "Lesson navigation changed active LMS session");
     await lmsPage.goBack({ waitUntil: "networkidle" });
     mock = await lmsState(lmsPage);
     assert(lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && mock.errors.length === 0, "Back navigation finished or reinitialized the LMS session");
-    await lmsPage.locator('.footer-inner a[href="#top"]').click();
+    await lmsPage.locator("[data-fixture-top]").click();
     await lmsPage.goto(`${origin}/__verify-components/`, { waitUntil: "networkidle" });
     mock = await lmsState(lmsPage);
     assert(lmsCalls(mock, "LMSFinish") === 1 && mock.values["cmi.core.lesson_status"] === "incomplete" && mock.errors.length === 0, "Same-page hash or actual exit finalized incorrectly");
     await navigationContext.close();
 
     const fallbackContext = await browser.newContext();
-    await installMockLms(fallbackContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(["practice-reflection"]) }), true);
+    await installMockLms(fallbackContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": navPartial }), true);
     const fallback = await fallbackContext.newPage();
-    await fallback.goto(origin, { waitUntil: "networkidle" });
-    await fallback.evaluate(() => { const link = document.createElement("a"); link.href = "/topics/practice/"; link.textContent = "Canceled lesson"; link.addEventListener("click", (event) => event.preventDefault()); document.body.append(link); link.click(); });
-    await fallback.evaluate(() => { const link = document.createElement("a"); link.href = "/topics/practice/"; link.target = "_blank"; link.addEventListener("click", (event) => event.preventDefault()); document.body.append(link); link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true })); });
-    await fallback.locator('.footer-inner a[href="#top"]').click();
+    await fallback.goto(navStart, { waitUntil: "networkidle" });
+    await fallback.evaluate(() => {
+      const canceled = document.createElement("a");
+      canceled.href = "./scenario/review/";
+      canceled.addEventListener("click", (event) => event.preventDefault());
+      document.body.append(canceled);
+      canceled.click();
+      const modified = document.createElement("a");
+      modified.href = canceled.href;
+      modified.target = "_blank";
+      modified.addEventListener("click", (event) => event.preventDefault());
+      document.body.append(modified);
+      modified.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true }));
+    });
+    await fallback.locator("[data-fixture-top]").click();
     await fallback.goto(`${origin}/__verify-components/`, { waitUntil: "networkidle" });
     mock = await lmsState(fallback);
-    assert(lmsCalls(mock, "LMSFinish") === 1 && lmsCalls(mock, "LMSInitialize") === 1 && mock.errors.length === 0, `Navigation API fallback retained a canceled or hash navigation flag: ${JSON.stringify({ initialize: lmsCalls(mock, "LMSInitialize"), finish: lmsCalls(mock, "LMSFinish"), errors: mock.errors })}`);
+    assert(lmsCalls(mock, "LMSFinish") === 1 && lmsCalls(mock, "LMSInitialize") === 1 && mock.errors.length === 0, "Fallback retained canceled or hash navigation intent");
     await fallbackContext.close();
 
-    const fallbackTransitionContext = await browser.newContext();
-    await installMockLms(fallbackTransitionContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(["practice-reflection"]) }), true);
-    const fallbackTransition = await fallbackTransitionContext.newPage();
-    await fallbackTransition.goto(origin, { waitUntil: "networkidle" });
-    await fallbackTransition.locator(".lessons-toggle").click();
-    await fallbackTransition.locator('.course-links a[data-lesson-path="/topics/practice/"]').click();
-    await fallbackTransition.waitForURL(`${origin}/topics/practice/`);
-    mock = await lmsState(fallbackTransition);
-    assert(lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && mock.errors.length === 0, "Fallback lesson transition did not reuse the active LMS session");
-    await fallbackTransitionContext.close();
+    const delayedContext = await browser.newContext();
+    await installMockLms(delayedContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": navPartial }), true);
+    const delayed = await delayedContext.newPage();
+    await delayed.goto(navStart, { waitUntil: "networkidle" });
+    const commitsBeforeDelay = lmsCalls(await lmsState(delayed), "LMSCommit");
+    await delayed.route("**/__verify-nav/scenario/review/", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2300));
+      await route.continue();
+    });
+    const startDelay = Date.now();
+    await delayed.locator("[data-fixture-lesson-link]").click();
+    await delayed.waitForURL(navReview);
+    mock = await lmsState(delayed);
+    assert(Date.now() - startDelay >= 2000 && lmsCalls(mock, "LMSInitialize") === 1 && lmsCalls(mock, "LMSFinish") === 0 && lmsCalls(mock, "LMSCommit") > commitsBeforeDelay && mock.errors.length === 0, "Delayed fallback lesson transition failed to commit or changed the active LMS session");
+    await delayedContext.close();
 
     const recoveryContext = await browser.newContext();
-    await installMockLms(recoveryContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend() }));
+    await installMockLms(recoveryContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(navConfig) }));
     const recovery = await recoveryContext.newPage();
-    await recovery.goto(origin, { waitUntil: "networkidle" });
+    await recovery.goto(navStart, { waitUntil: "networkidle" });
     mock = await lmsState(recovery);
     assert(mock.values["cmi.core.lesson_status"] === "completed" && mock.errors.length === 0, "Fully validated earned LMS record did not recover its status");
     await recoveryContext.close();
 
-    const legacyRecord = JSON.parse(suspend(["practice-reflection"]));
+    const legacyRecord = JSON.parse(navPartial);
     legacyRecord.u = Object.fromEntries(Array.from({ length: 25 }, (_, index) => [`slot-${index}`, "x".repeat(64)]));
     assert(JSON.stringify(legacyRecord.u).length > 1800 && JSON.stringify(legacyRecord).length < 4096, "Legacy oversized-UI fixture does not cross the intended boundary");
     const legacyContext = await browser.newContext();
     await installMockLms(legacyContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": JSON.stringify(legacyRecord) }));
     const legacy = await legacyContext.newPage();
-    await legacy.goto(origin, { waitUntil: "networkidle" });
+    await legacy.goto(navStart, { waitUntil: "networkidle" });
     assert((await legacy.locator("[data-progress-percent]").textContent()) !== "0%" && (await legacy.locator("[data-progress-save-error]").textContent()).includes("Earned course progress was preserved"), "Legacy optional UI overflow discarded valid earned evidence or hid the repair");
     await legacyContext.close();
 
     const freshContext = await browser.newContext();
     await installMockLms(freshContext, lmsSeed());
     const fresh = await freshContext.newPage();
-    await fresh.goto(origin, { waitUntil: "networkidle" });
+    await fresh.goto(navStart, { waitUntil: "networkidle" });
     mock = await lmsState(fresh);
     assert(mock.values["cmi.core.lesson_status"] !== "completed", "Fresh LMS attempt completed without requirements");
-    await fresh.locator("#assessment input[type=radio]").last().check();
-    mock = await lmsState(fresh);
-    const assessmentIndex = milestones.findIndex((item) => item.id === "assessment");
-    assert(JSON.parse(mock.values["cmi.suspend_data"] || "{}").c?.includes(assessmentIndex) && (await fresh.locator("#assessment [data-assessment-feedback-copy]").textContent()).includes("Incorrect response."), "Wrong but valid answer did not earn attempt credit and feedback");
     await freshContext.close();
 
-    const restoredAnswer = JSON.parse(suspend(["assessment"]));
-    restoredAnswer.u = { "assessment:answer": 1 };
+    const interactionConfig = await fixtureConfig("__verify-interactions");
+    assert(interactionConfig.lessons.length === 1, "Single-lesson interaction fixture is incomplete");
+    const restoredAnswer = JSON.parse(suspend(interactionConfig, ["fixture-assessment", "fixture-knowledge"]));
+    restoredAnswer.u = { "fixture-assessment:answer": 1 };
     const answerContext = await browser.newContext();
     await installMockLms(answerContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": JSON.stringify(restoredAnswer) }));
     const answerPage = await answerContext.newPage();
-    await answerPage.goto(origin, { waitUntil: "networkidle" });
+    await answerPage.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
     const answerMock = await lmsState(answerPage);
-    assert((await answerPage.locator("#assessment input[type=radio]:checked").count()) === 1 && (await answerPage.locator("#assessment [data-assessment-feedback-copy]").textContent()).includes("Incorrect response.") && !JSON.parse(answerMock.values["cmi.suspend_data"]).c.includes(assessmentIndex), "Restored answer created an unearned new attempt");
+    assert((await answerPage.locator("#fixture-assessment input[type=radio]:checked").count()) === 1 &&
+      (await answerPage.locator("#fixture-assessment [data-assessment-feedback-copy]").textContent()).includes("Incorrect response.") &&
+      !JSON.parse(answerMock.values["cmi.suspend_data"]).c.includes(4), "Restored answer created an unearned new attempt");
     await answerContext.close();
+
+    const attemptContext = await browser.newContext();
+    await installMockLms(attemptContext, lmsSeed());
+    const attempt = await attemptContext.newPage();
+    await attempt.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
+    await attempt.locator("[data-progress-trigger]").click();
+    assert((await attempt.locator("[data-progress-lesson]").count()) === interactionConfig.lessons.length &&
+      (await attempt.locator("[data-progress-course-count]").textContent()).includes(`of ${interactionConfig.completion.milestones.filter((item) => item.required).length} completed`), "Single-lesson course summary did not follow configuration");
+    await attempt.locator("[data-progress-close]").click();
+    await attempt.locator("#fixture-assessment input[type=radio]").last().check();
+    const attemptMock = await lmsState(attempt);
+    assert(JSON.parse(attemptMock.values["cmi.suspend_data"] || "{}").c?.includes(4) &&
+      (await attempt.locator("#fixture-assessment [data-assessment-feedback-copy]").textContent()).includes("Incorrect response.") &&
+      !(await attempt.locator("#fixture-knowledge input[type=radio]:checked").count()), "Wrong valid attempt or independent assessment state failed");
+    await attemptContext.close();
 
     const interactionContext = await browser.newContext();
     await installMockLms(interactionContext, lmsSeed());
@@ -265,23 +322,23 @@ try {
     await failedSaveContext.close();
 
     const reflectionContext = await browser.newContext();
-    await installMockLms(reflectionContext, lmsSeed({ "cmi.core.student_id": "", "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(milestones.filter((item) => item.path !== "/").map((item) => item.id)) }));
+    await installMockLms(reflectionContext, lmsSeed({ "cmi.core.student_id": "", "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": navPartial }));
     const reflection = await reflectionContext.newPage();
-    await reflection.goto(`${origin}/topics/practice/`, { waitUntil: "networkidle" });
-    await reflection.locator("#practice-reflection textarea").fill("Private readiness response sentinel");
-    await reflection.locator("#practice-reflection button[type=submit]").click();
+    await reflection.goto(navReview, { waitUntil: "networkidle" });
+    await reflection.locator("#fixture-response textarea").fill("Private readiness response sentinel");
+    await reflection.locator("#fixture-response button[type=submit]").click();
     const reflectionMock = await lmsState(reflection);
-    assert((await reflection.locator("#practice-reflection [data-reflection-status]").textContent()).includes("open page only") && !reflectionMock.values["cmi.suspend_data"].includes("Private readiness response sentinel"), "Identity-free reflection leaked text or failed to explain session-only storage");
+    assert((await reflection.locator("#fixture-response [data-reflection-status]").textContent()).includes("open page only") && !reflectionMock.values["cmi.suspend_data"].includes("Private readiness response sentinel"), "Identity-free reflection leaked text or failed to explain session-only storage");
     await reflectionContext.close();
 
     const storageContext = await browser.newContext();
-    await installMockLms(storageContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(milestones.filter((item) => item.path !== "/").map((item) => item.id)) }));
+    await installMockLms(storageContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": navPartial }));
     await storageContext.addInitScript(() => { const nativeSet = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key.endsWith("-text")) throw new Error("Private storage unavailable"); return nativeSet.call(this, key, value); }; });
     const storage = await storageContext.newPage();
-    await storage.goto(`${origin}/topics/practice/`, { waitUntil: "networkidle" });
-    await storage.locator("#practice-reflection textarea").fill("Browser storage sentinel");
-    await storage.locator("#practice-reflection button[type=submit]").click();
-    assert((await storage.locator("#practice-reflection [data-reflection-status]").textContent()).includes("open page only") && !(await lmsState(storage)).values["cmi.suspend_data"].includes("Browser storage sentinel"), "Unavailable browser text storage did not use the private session fallback");
+    await storage.goto(navReview, { waitUntil: "networkidle" });
+    await storage.locator("#fixture-response textarea").fill("Browser storage sentinel");
+    await storage.locator("#fixture-response button[type=submit]").click();
+    assert((await storage.locator("#fixture-response [data-reflection-status]").textContent()).includes("open page only") && !(await lmsState(storage)).values["cmi.suspend_data"].includes("Browser storage sentinel"), "Unavailable browser text storage did not use the private session fallback");
     await storageContext.close();
 
     const routes = await browser.newPage();

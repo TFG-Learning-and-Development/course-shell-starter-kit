@@ -58,11 +58,27 @@ const suspend = (omittedId = "") => JSON.stringify({
   v: config.completion.storageKey,
   s: signatureHash.toString(16).padStart(16, "0"),
   c: milestones.flatMap((item, index) => item.id === omittedId ? [] : [index]),
-  w: Object.fromEntries(milestones.flatMap((item, index) => item.type === "watch" ? [[index, [[0, 1]]]] : [])),
-  e: Object.fromEntries(milestones.flatMap((item, index) => item.type === "explore" ? [[index, item.requiredItems]] : [])),
+  w: Object.fromEntries(milestones.flatMap((item, index) => item.type === "watch" && item.id !== omittedId ? [[index, [[0, 100]]]] : [])),
+  d: Object.fromEntries(milestones.flatMap((item, index) => item.type === "watch" && item.id !== omittedId ? [[index, 100]] : [])),
+  e: Object.fromEntries(milestones.flatMap((item, index) => item.type === "explore" && item.id !== omittedId ? [[index, item.requiredItems]] : [])),
   u: {},
 });
 assert(suspend().length <= 4096, "Full milestone state exceeds the SCORM 1.2 suspend-data limit.");
+if (process.argv.includes("--check-fixtures")) {
+  const full = JSON.parse(suspend());
+  const required = milestones.map((item, index) => item.required ? index : -1).filter((index) => index >= 0);
+  assert(required.every((index) => full.c.includes(index)), "Recovery fixture omits required evidence.");
+  for (const [index, item] of milestones.entries()) {
+    if (item.type === "watch") assert(full.d[index] === 100 && JSON.stringify(full.w[index]) === "[[0,100]]", `WATCH evidence is invalid for ${item.id}`);
+  }
+  if (required.length) {
+    const omitted = milestones[required.at(-1)].id;
+    const partial = JSON.parse(suspend(omitted));
+    assert(!partial.c.includes(required.at(-1)) && partial.c.length < full.c.length, "Navigation fixture contains fully completed evidence.");
+  }
+  console.log(`SCORM fixture evidence verified against built configuration: ${config.lessons.length} lessons, ${milestones.length} milestones.`);
+  process.exit(0);
+}
 
 await rm(scratch, { recursive: true, force: true });
 try {
@@ -93,8 +109,11 @@ try {
   const ready = (page) => page.locator(".course-page:not([data-access-pending])").waitFor();
   const browser = await chromium.launch({ headless: true });
   try {
+    const lastLesson = config.lessons.at(-1);
+    const navigationOmission = milestones.find((item) => item.required && item.path === lastLesson.path && item.type !== "view");
+    const navigationIsPartial = Boolean(navigationOmission);
     const routeContext = await browser.newContext();
-    await installMock(routeContext, seed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend() }));
+    await installMock(routeContext, seed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(navigationOmission?.id || "") }));
     const routePage = await routeContext.newPage();
     monitor(routePage, "configured routes", origin);
     for (const [index, lesson] of config.lessons.entries()) {
@@ -124,20 +143,47 @@ try {
     }
     const beforeClose = await state(routePage);
     assert(beforeClose.invalid.length === 0 && beforeClose.active, `Refresh or history made invalid LMS calls: ${JSON.stringify(beforeClose.invalid)}`);
-    assert(beforeClose.values["cmi.core.lesson_status"] === "incomplete", "Navigation granted completion.");
+    assert(beforeClose.values["cmi.core.lesson_status"] === (navigationIsPartial ? "incomplete" : "completed"), "Navigation changed the validated completion status.");
     assert(beforeClose.calls.some((call) => call[0] === "LMSCommit"), "Navigation did not commit progress.");
     await routePage.evaluate(() => window.dispatchEvent(new Event("pagehide")));
     const closed = await state(routePage);
     assert(calls(closed, "LMSFinish").length === calls(beforeClose, "LMSFinish").length + 1 && !closed.active && closed.values["cmi.core.exit"] === "suspend", "Save and Close did not suspend and finish exactly once.");
-    assert(closed.values["cmi.core.lesson_status"] === "incomplete", "Closure granted completion.");
+    assert(closed.values["cmi.core.lesson_status"] === (navigationIsPartial ? "incomplete" : "completed"), "Closure changed the validated completion status.");
     const reopened = await routeContext.newPage();
     monitor(reopened, "saved LMS resume", origin);
     await reopened.goto(url(config.lessons[0].path), { waitUntil: "networkidle" });
     await ready(reopened);
     assert(reopened.url() === url(config.lessons.at(-1).path), "Saved lesson location was not restored.");
     const resumed = await state(reopened);
-    assert(calls(resumed, "LMSInitialize").length === calls(closed, "LMSInitialize").length + 1 && resumed.invalid.length === 0 && resumed.values["cmi.core.lesson_status"] === "incomplete", "Closed LMS session did not initialize and resume correctly.");
+    assert(calls(resumed, "LMSInitialize").length === calls(closed, "LMSInitialize").length + 1 && resumed.invalid.length === 0 && resumed.values["cmi.core.lesson_status"] === (navigationIsPartial ? "incomplete" : "completed"), "Closed LMS session did not initialize and resume correctly.");
     await routeContext.close();
+
+    if (!navigationOmission) {
+      const pendingInteraction = milestones.find((item) => item.required && item.type !== "view");
+      if (pendingInteraction) {
+        const partialContext = await browser.newContext();
+        await installMock(partialContext, seed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(pendingInteraction.id) }));
+        const partialPage = await partialContext.newPage();
+        monitor(partialPage, "partial navigation evidence", origin);
+        await partialPage.goto(url(pendingInteraction.path), { waitUntil: "networkidle" });
+        await ready(partialPage);
+        const pending = await state(partialPage);
+        assert(pending.values["cmi.core.lesson_status"] === "incomplete" && pending.invalid.length === 0, "Partial interaction evidence unexpectedly completed the LMS.");
+        await partialContext.close();
+      }
+    }
+
+    if (milestones.some((item) => item.required)) {
+      const recoveryContext = await browser.newContext();
+      await installMock(recoveryContext, seed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend() }));
+      const recoveryPage = await recoveryContext.newPage();
+      monitor(recoveryPage, "completed evidence recovery", origin);
+      await recoveryPage.goto(url(config.lessons[0].path), { waitUntil: "networkidle" });
+      await ready(recoveryPage);
+      const recovered = await state(recoveryPage);
+      assert(recovered.values["cmi.core.lesson_status"] === "completed" && recovered.invalid.length === 0 && calls(recovered, "LMSCommit").length > 0, "Validated fully earned evidence did not recover incomplete LMS status.");
+      await recoveryContext.close();
+    }
 
     const freshContext = await browser.newContext();
     await installMock(freshContext, seed());

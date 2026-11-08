@@ -27,6 +27,9 @@ const verificationFixture = {
         injectRoute({ pattern: '/__verify-large', entrypoint: new URL('./scripts/fixtures/LargeStateFixture.astro', import.meta.url), prerender: true });
         injectRoute({ pattern: '/__verify-interactions', entrypoint: new URL('./scripts/fixtures/InteractionStateFixture.astro', import.meta.url), prerender: true });
         injectRoute({ pattern: '/__verify-bad-contract', entrypoint: new URL('./scripts/fixtures/BadContractFixture.astro', import.meta.url), prerender: true });
+        for (const pattern of ['/__verify-nav', '/__verify-nav/scenario/review']) {
+          injectRoute({ pattern, entrypoint: new URL('./scripts/fixtures/NavigationFixture.astro', import.meta.url), prerender: true });
+        }
         for (const pattern of ['/__verify-routes', '/__verify-routes-unlocked', '/__verify-routes-empty']) {
           injectRoute({ pattern, entrypoint: new URL('./scripts/fixtures/RouteFixture.astro', import.meta.url), prerender: true });
         }
