@@ -8,6 +8,13 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 const dist = path.resolve("dist");
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const assertNoExplorationTally = async (page, selector) => {
+  const result = await page.locator(selector).evaluate((root) => ({
+    caption: Boolean(root.querySelector("[data-flip-status], [data-explorer-status], [data-step-status]")),
+    tally: /\b\d+ of \d+ (?:cards|items|steps) explored\b/i.test(root.textContent || ""),
+  }));
+  assert(!result.caption && !result.tally, `${selector} rendered an exploration tally or empty caption container`);
+};
 const builtConfig = JSON.parse((await readFile(path.join(dist, "index.html"), "utf8")).match(/<script\b[^>]*data-course-config[^>]*>([\s\S]*?)<\/script>/)?.[1] || "null");
 assert(builtConfig?.lessons?.length > 0 && builtConfig?.completion?.milestones && builtConfig?.completion?.storageKey, "Built course configuration is missing lessons or milestones.");
 const lessonFile = (route) => path.join(dist, ...route.split("/").filter(Boolean), "index.html");
@@ -221,6 +228,7 @@ try {
     const singleLms = await singleLmsContext.newPage();
     monitor(singleLms, "single-page simulated LMS", origin);
     await singleLms.goto(onePageUrl, { waitUntil: "networkidle" });
+    await assertNoExplorationTally(singleLms, "#fixture-steps");
     await singleLms.locator("#fixture-intro").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(0));
     await singleLms.locator("[data-progress-trigger]").click();
@@ -236,12 +244,16 @@ try {
     assert(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(2), "First question did not earn its independent attempt");
     await singleLms.locator("#fixture-steps [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("notice"));
+    assert(JSON.stringify(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).e[1]) === JSON.stringify(["notice"]) &&
+      !(await singleLms.locator('#fixture-steps [data-step-id="notice"] .step-group__check').isHidden()), "First visible step lost its individual exploration state");
+    await assertNoExplorationTally(singleLms, "#fixture-steps");
     assert(await singleLms.locator('#fixture-steps [data-step-id="act"]').isDisabled(), "Ordered steps exposed a later row too early");
     await singleLms.locator("#fixture-steps [data-step-next]").click();
     await singleLms.locator("#fixture-steps [data-step-next]").click();
     singleMock = await lmsState(singleLms);
     assert(JSON.stringify(JSON.parse(singleMock.values["cmi.suspend_data"]).e[1]) === JSON.stringify(["notice", "choose", "act"]) &&
       singleMock.values["cmi.core.lesson_status"] === "completed" && singleMock.errors.length === 0, "Ordered exploration or all-required completion failed");
+    await assertNoExplorationTally(singleLms, "#fixture-steps");
     await singleLms.reload({ waitUntil: "networkidle" });
     singleMock = await lmsState(singleLms);
     const restoredSingle = { initialized: lmsCalls(singleMock, "LMSInitialize"), finished: lmsCalls(singleMock, "LMSFinish"),
@@ -249,9 +261,11 @@ try {
       step: await singleLms.locator("#fixture-steps [data-step-count]").textContent(), errors: singleMock.errors };
     assert(restoredSingle.initialized === restoredSingle.finished + 1 && restoredSingle.checked === 1 &&
       restoredSingle.step === "Step 3 of 3" &&
+      (await singleLms.locator("#fixture-steps .step-group__check:not([hidden])").count()) === 3 &&
       (await singleLms.locator("#fixture-quiz-first [data-feedback-copy]").textContent()).includes("Incorrect response.") &&
       singleMock.active && singleMock.values["cmi.core.lesson_status"] === "completed" &&
       restoredSingle.errors.length === 0, `Single-page LMS refresh lost state or made invalid session calls: ${JSON.stringify(restoredSingle)}`);
+    await assertNoExplorationTally(singleLms, "#fixture-steps");
     await singleLmsContext.close();
 
     // These scenarios use a renamed, nested two-lesson fixture. Production
@@ -383,10 +397,15 @@ try {
     monitor(interaction, "simulated LMS interactions", origin);
     await interaction.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
     const exploredIds = async (id) => { const saved = (await lmsState(interaction)).values["cmi.suspend_data"]; return JSON.parse(saved || "{}").e?.[id] || []; };
+    for (const selector of ["#fixture-steps", "#fixture-items", "#fixture-flips"]) await assertNoExplorationTally(interaction, selector);
     await interaction.locator("#fixture-steps [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
     await interaction.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[0]?.includes("first"));
+    assert(JSON.stringify(await exploredIds(0)) === JSON.stringify(["first"]), "Visible initial step did not save its child evidence");
+    await assertNoExplorationTally(interaction, "#fixture-steps");
     await interaction.locator("#fixture-steps [data-step-next]").click();
-    assert(JSON.stringify(await exploredIds(0)) === JSON.stringify(["first", "second"]), "Initial visible step or Next failed to earn every required child after LMS launch");
+    assert(JSON.stringify(await exploredIds(0)) === JSON.stringify(["first", "second"]) &&
+      (await interaction.locator("#fixture-steps [data-step-count]").textContent()) === "Step 2 of 2", "Initial visible step, Next or navigation counter failed after LMS launch");
+    await assertNoExplorationTally(interaction, "#fixture-steps");
     await interaction.locator("#fixture-carousel").scrollIntoViewIfNeeded();
     await interaction.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("one"));
     await interaction.locator("#fixture-carousel [data-carousel-next]").click();
@@ -396,11 +415,34 @@ try {
     await interaction.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
     assert(JSON.stringify(await exploredIds(2)) === JSON.stringify(["alpha", "beta"]), "Tracked tabs did not earn the visible initial panel and selected panel");
     await interaction.locator("#fixture-items [data-category-choice=apply]").click();
-    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect"]), "Explorer credited an unselected item");
+    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect"]) &&
+      !JSON.parse((await lmsState(interaction)).values["cmi.suspend_data"]).c.includes(3), "Explorer credited an unselected item or completed early");
+    await assertNoExplorationTally(interaction, "#fixture-items");
+    await interaction.locator('#fixture-flips [data-flip-id="front"]').click();
+    assert(JSON.stringify(await exploredIds(6)) === JSON.stringify(["front"]) &&
+      !JSON.parse((await lmsState(interaction)).values["cmi.suspend_data"]).c.includes(6) &&
+      (await interaction.locator('#fixture-flips [data-flip-id="front"]').getAttribute("aria-expanded")) === "true", "First flipped card lost its individual state or completed early");
+    await assertNoExplorationTally(interaction, "#fixture-flips");
     await interaction.reload({ waitUntil: "networkidle" });
     assert(await interaction.locator("#fixture-items [data-explorer-item=reflect]").isVisible() && (await interaction.locator("#fixture-items [data-category-choice=apply]").getAttribute("aria-pressed")) === "true", "Explorer did not restore category and item atomically");
     assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect"]), "Explorer restoration emitted new exploration");
+    assert(JSON.stringify(await exploredIds(6)) === JSON.stringify(["front"]), "Flipped-card exploration evidence did not restore");
+    for (const selector of ["#fixture-steps", "#fixture-items", "#fixture-flips"]) await assertNoExplorationTally(interaction, selector);
     assert((await interaction.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" && (await interaction.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta", "Carousel or tabs did not restore active content");
+    await interaction.locator("#fixture-items [data-category-choice=prepare]").click();
+    await interaction.locator('#fixture-flips [data-flip-id="back"]').click();
+    const completedExploration = JSON.parse((await lmsState(interaction)).values["cmi.suspend_data"]);
+    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect", "plan"]) &&
+      JSON.stringify(await exploredIds(6)) === JSON.stringify(["front", "back"]) &&
+      completedExploration.c.includes(3) && completedExploration.c.includes(6) &&
+      (await interaction.locator("[data-progress-course-count]").textContent()).includes(`5 of ${interactionConfig.completion.milestones.length} completed`), "Completed exploration lost child evidence, credit or Progress summary");
+    await assertNoExplorationTally(interaction, "#fixture-items");
+    await assertNoExplorationTally(interaction, "#fixture-flips");
+    await interaction.reload({ waitUntil: "networkidle" });
+    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect", "plan"]) &&
+      JSON.stringify(await exploredIds(6)) === JSON.stringify(["front", "back"]) &&
+      (await interaction.locator("#fixture-items [data-item-choice=plan]").getAttribute("aria-pressed")) === "true", "Completed exploration or selected item did not restore");
+    for (const selector of ["#fixture-steps", "#fixture-items", "#fixture-flips"]) await assertNoExplorationTally(interaction, selector);
     await interactionContext.close();
 
     const failedSaveContext = await browser.newContext();

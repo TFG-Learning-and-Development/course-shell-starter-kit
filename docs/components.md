@@ -105,6 +105,8 @@ For every new or adapted interaction, inset the content and its navigation from 
 - `MatchingActivity`: variable prompts/options, persistent selections and valid-attempt submission feedback. Configure its milestone as `submit`.
 - `ReflectionActivity`: saves text only to course- and activity-specific browser storage; LMS text is learner-isolated when an LMS learner ID exists. A valid save dispatches `complete`.
 
+Do not automatically add learner-facing exploration tally captions such as “X of Y cards/items/steps explored”. Track exploration internally and reflect completion through the established Progress interface. Do not invent these captions during course builds. Keep useful navigation counters such as “Question 1 of 4” and “Step 5 of 8”. If approved storyboard copy explicitly contains a conflicting tally, flag the conflict rather than silently changing approved wording; follow the verbatim copy rule in [`AGENTS.md`](../AGENTS.md).
+
 The neutral learner demonstration uses a representative subset in `src/pages/`. Additional examples are in `scripts/fixtures/ComponentFixture.astro`, injected only into local development and temporary verification builds and excluded from course completion.
 
 Run `npm run dev` and open `http://localhost:4321/__component-gallery/` to try the actual shared components. The gallery uses neutral content, fixture-only in-memory state and no LMS or course progress bridge. It is excluded from production and SCORM builds. `ReflectionActivity` accepts `storageMode="memory"` for this preview only; course use keeps the default course/learner-isolated browser storage.
