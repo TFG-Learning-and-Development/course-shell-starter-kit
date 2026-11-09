@@ -2,6 +2,15 @@
 
 This repository is a reusable Astro course shell.
 
+## Mandatory storyboard copy fidelity
+
+- Use only approved storyboard copy for learner-facing content. Never generate additional introductions, summaries, examples, transitions, activity instructions, questions, answers or feedback. If required copy is missing, ask for it rather than writing it yourself. Existing mandatory shell interface labels remain permitted and retain their required wording.
+- Copy every approved learner-facing storyboard passage **verbatim**. Preserve wording, spelling, capitalisation, punctuation, numbers, headings, questions, answer options and feedback. Do not paraphrase, summarise, shorten, polish, correct typos or omit copy without explicit user approval.
+- Layout changes, line wrapping and semantic HTML formatting are permitted only when they preserve the content.
+- Content enclosed in curly braces `{...}` is non-learner-facing guidance: do not display the braces or their contents. Clearly identified developer/build instructions guide implementation but must not appear as learner-facing copy. Ordinary parentheses `(...)` and square brackets `[...]` are **not** exclusions. If it is unclear whether text is learner copy or an instruction, ask before omitting or rewriting it.
+- Generic style rules must not silently remove approved storyboard copy. Place copy unsuitable for a prescribed treatment appropriately elsewhere without changing its wording. Preserve mandatory shell interface wording separately from storyboard copy.
+- Compare rendered learner copy against the storyboard. Account for every learner-facing passage and record permitted exclusions. Report unresolved differences; a successful build alone does not establish verbatim fidelity.
+
 ## Build stages
 
 Explicit user instructions determine the stage; default to **Preview** when no stage is stated.
@@ -27,7 +36,7 @@ Explicit user instructions determine the stage; default to **Preview** when no s
 - Reuse the existing Astro, Tailwind, layout, component and interaction foundation.
 - Build every course from its approved storyboard, mood board and supplied assets. The storyboard controls content, sequence and activity requirements; the mood board controls branding, imagery and course-specific composition.
 - Compose courses from the premium reusable component library and shared typography/spacing tokens. Choose only patterns that serve the learning design; never insert every available component as a gallery.
-- Do not invent learner content, questions, examples or completion requirements when the brief is ambiguous. Record the gap and request the missing approved input.
+- Do not invent completion requirements when the brief is ambiguous. Record the gap and request the missing approved input. Apply the mandatory storyboard copy fidelity rule to all learner-facing content, including when copy is missing.
 - Do not redesign the course or replace the component system unless the user explicitly requests it.
 - Do not perform general Astro or dependency upgrades unless the user explicitly requests them. Targeted compatible security fixes are allowed after inspecting the audit and dependency paths; explain framework-major or otherwise breaking changes before implementation.
 - Keep learner-facing course information in `src/data/course.ts` where practical.
@@ -50,11 +59,11 @@ These instructions apply automatically to every course build and every new or ad
 - Act as a senior UX/UI designer and Astro developer. Treat the approved shell's visual and interaction quality as the baseline. Use the storyboard for learning purpose, content, sequence, feedback and completion evidence; use the mood board for branding, imagery and course-specific composition while preserving the shared typography.
 - Before implementation, map each storyboard activity to a suitable existing component, an adaptation or a new component, with a short reason and its completion trigger. Keep this in working notes or the handover; do not add an approval pause for routine design decisions within the approved brief.
 - Reuse a suitable shared component first and adapt it when needed. When the library does not serve the learning purpose, design and implement a new premium reusable component as part of the build. A separate request to create it is not required. Course builds must work from this shell and the supplied inputs without requiring another course repository.
-- Choose interactions that serve the learning design. Do not add activities to fill a gallery, force the storyboard into an unsuitable pattern, or invent learner content, answers, feedback or completion rules. Ask only for missing approved input that materially blocks implementation.
+- Choose interactions that serve the learning design. Do not add activities to fill a gallery, force the storyboard into an unsuitable pattern, or invent completion rules. Ask for any missing required learner-facing copy and for missing approved input that materially blocks implementation.
 
 #### Interaction quality requirements
 
-- Establish a clear heading, concise instructions, readable content and a clear next action. Use editorial image/text composition, appropriate surfaces, restrained gradients and depth where they support the approved design. Give icons a purpose and use consistent image proportions.
+- Present approved headings, instructions and content clearly, with a clear next action. Do not shorten or add copy to achieve this. Use editorial image/text composition, appropriate surfaces, restrained gradients and depth where they support the approved design. Give icons a purpose and use consistent image proportions.
 - Inherit the shared typography, theme, spacing, radius, focus and motion rules. Keep component-specific styles scoped and driven by tokens. Do not add competing font scales or fixed course colours.
 - Put content, feedback and controls inside deliberate padded regions. Keep buttons clear of options, card edges, dividers and rounded corners in every state. Use shared spacing for heading-to-copy, option gaps and action rows; prevent overlap, clipping and controls sitting on the rim of a panel.
 - Let real content determine height. Reserve space only for a justified transition or feedback layout. Handle long copy, wrapped labels, different item counts and image aspect ratios without empty fixed-height panels or page-level overflow. Preserve the approved assessment composition.
@@ -66,7 +75,7 @@ These instructions apply automatically to every course build and every new or ad
 
 #### Review before handover
 
-- Review the actual course content and assets in the rendered component. Inspect initial and active/feedback states at narrow mobile, an intermediate width and desktop, including a responsive breakpoint; verify controls and long labels remain inside their padded regions.
+- Review the actual course content and assets in the rendered component. Compare all rendered learner copy with the storyboard, account for every passage and record permitted exclusions and unresolved differences. Inspect initial and active/feedback states at narrow mobile, an intermediate width and desktop, including a responsive breakpoint; verify controls and long labels remain inside their padded regions.
 - Exercise the learner path with mouse/touch and keyboard as appropriate, including valid and empty input, incorrect attempts, moving between items, refresh/resume and applicable save failures. Check more than one instance and representative minimum and larger item counts when adding a reusable pattern.
 - Fix defects found in that review and rerun the relevant checks before handing over. Add meaningful regression coverage for new behaviour and defects such as edge-touching controls, overflow, unintended completion and lost restoration. Preserve the existing build and verification suites.
 - Document the component in `docs/components.md` and add a neutral working example to `scripts/fixtures/ComponentFixture.astro` with its purpose, editable props, completion behaviour and usage. Keep gallery state in memory and isolated from real course progress and LMS communication.
@@ -89,7 +98,7 @@ These instructions apply automatically to every course build and every new or ad
 - Build single-choice assessments and knowledge checks with the shared `PremiumAssessment` composition: one dark gradient rounded panel, heading and theme-accent rule above a two-column question/answers grid, a light icon question card with feedback beneath it, and large light radio answer cards to the right. Stack the grid and remove its divider on mobile. Selection shows configured feedback immediately and counts as a valid attempt, even when incorrect; restoration and empty rendering do not create attempts. Keep matching and other activity rules separate.
 - Do not introduce a competing typography system or change shared typography to match a mood board, design board or other visual reference.
 - Apply a specific heading override only when the user explicitly requests it, and scope the override to that heading without changing shared tokens.
-- Do not add learner-facing eyebrow content or small contextual labels above headings. Start with the semantic heading and use ordinary introductory copy below it when needed.
+- Do not use learner-facing eyebrow content or small contextual labels above headings. Start with the semantic heading; place any approved storyboard copy unsuitable for that treatment appropriately below it without changing or omitting the wording. Do not create an introduction unless the storyboard supplies it.
 - Use shared `--course-space-*`, radius and surface tokens for section spacing, card padding, grid gaps and heading-to-content spacing. Scoped typography overrides are allowed only when the approved design explicitly calls for them and must not change the shared defaults.
 
 ### Completion tracking

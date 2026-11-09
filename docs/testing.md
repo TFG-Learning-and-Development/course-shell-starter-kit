@@ -12,6 +12,8 @@ This repository is the reusable neutral shell. The default production example is
 
 Explicit user instructions select the stage; default to **Preview**. In Preview, build and run relevant verification without packaging hooks, inspect the rendered course and report remaining issues. Record SCORM packaging as `Not run — Preview stage`.
 
+At every stage, check storyboard copy fidelity against the rendered course: account for every learner-facing passage, compare its wording, spelling, capitalisation, punctuation, numbers, headings, questions, answer options and feedback verbatim, and record permitted exclusions and unresolved differences. A successful build does not prove copy fidelity.
+
 In **Review**, compare the rendered course against its storyboard and mood board. Check content, responsive layout, accessibility, interactions, progress and resume; fix issues and rerun affected checks. Record human visual/content approval separately from automated results, and record SCORM packaging as `Not run — Review stage`.
 
 Enter **Release preparation** only when the user explicitly requests packaging, a release candidate or release preparation. A request for packaged LMS testing also enters this stage. Build the latest approved source, run `npm run package:scorm` and `npm run verify:scorm`, then record the source commit or working-tree state represented by the ZIP. Separate simulated LMS results from outstanding live Oracle acceptance. Packaging does not authorise publishing, LMS upload or merging. Learner-facing edits after packaging make the ZIP stale until rebuilt.

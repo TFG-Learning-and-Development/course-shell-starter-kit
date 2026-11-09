@@ -6,7 +6,7 @@ The starter includes the Quick Course typography primitives without the source s
 
 Every new course must inherit this typography system through `CourseLayout.astro`; do not introduce an alternative typography layer. Preserve the established semantic heading levels, font families, sizes, weights, line heights and responsive scaling. Build course content and interactions with the existing components, classes and `--course-type-*` tokens.
 
-Mood boards and design boards may guide colour, imagery and composition, but they do not authorize typography changes. Do not alter shared typography to imitate a visual reference. Apply a heading-specific override only when explicitly requested, scope it to that heading, and leave shared tokens unchanged. Do not add eyebrow content or contextual labels above headings.
+Mood boards and design boards may guide colour, imagery and composition, but they do not authorize typography changes. Do not alter shared typography to imitate a visual reference. Apply a heading-specific override only when explicitly requested, scope it to that heading, and leave shared tokens unchanged. Do not place eyebrow content or contextual labels above headings; present any approved storyboard copy elsewhere without changing or omitting it, as required by [`AGENTS.md`](../AGENTS.md).
 
 ## Defaults and configuration
 
