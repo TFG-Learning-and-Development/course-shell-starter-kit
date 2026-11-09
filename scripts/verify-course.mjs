@@ -89,8 +89,9 @@ try {
   const origin = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [320, 375, 768, 1024, 1280, 1366, 1440]) {
-      const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
+    for (const width of [320, 375, 640, 768, 1024, 1280, 1366, 1440]) {
+      // 640 CSS pixels at 2x device scale approximates a 1280px window at 200% zoom.
+      const context = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: width === 640 ? 2 : 1, reducedMotion: "reduce" });
       const page = await context.newPage();
       monitor(page, `${width}px`, origin);
       await page.goto(origin, { waitUntil: "networkidle" });
@@ -103,8 +104,15 @@ try {
       assert((await page.locator(".footer-inner > p a, .footer-inner > p button, [data-progress-reset]").count()) === 0, `${width}px learner control entered footer or Progress`);
       assert((await page.locator(".footer-inner > a").textContent()).includes("Back to top"), `${width}px Back to top missing`);
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${width}px horizontal overflow`);
-      const type = await page.evaluate(() => ({ size: parseFloat(getComputedStyle(document.body).fontSize), family: getComputedStyle(document.body).fontFamily }));
-      assert(Math.abs(type.size - 18) < .1 && type.family.includes("Arial Nova"), `${width}px shared typography changed`);
+      const type = await page.evaluate(() => {
+        const family = (selector) => getComputedStyle(document.querySelector(selector)).fontFamily;
+        return { size: parseFloat(getComputedStyle(document.body).fontSize), family: family("body"),
+          roles: ["h1", ".lessons-toggle", "[data-progress-trigger]", ".course-progress", ".footer-inner p", ".premium-assessment__option"]
+            .filter((selector) => document.querySelector(selector)).map(family) };
+      });
+      assert(Math.abs(type.size - 18) < .1 && type.family.startsWith("system-ui") &&
+        type.family.includes("Segoe UI") && type.family.includes("Helvetica Neue") &&
+        type.roles.every((family) => family === type.family), `${width}px shared system typography changed: ${JSON.stringify(type)}`);
       const progress = page.locator("[data-progress-trigger]");
       await progress.focus();
       assert(await progress.evaluate((node) => getComputedStyle(node).outlineStyle !== "none"), `${width}px progress focus invisible`);
@@ -157,6 +165,11 @@ try {
       await page.goto(`${origin}${lesson.path}`, { waitUntil: "networkidle" });
       assert((await page.locator("[data-course-path]").getAttribute("data-course-path")) === lesson.path, `Configured lesson did not render: ${lesson.path}`);
       assert(!(await page.locator("[data-access-pending]").count()), `Configured lesson remained locked: ${lesson.path}`);
+      assert(await page.evaluate(() => {
+        const family = getComputedStyle(document.body).fontFamily;
+        return [...document.querySelectorAll("h1, h2, h3, button, input, select, textarea, .footer-inner p")]
+          .every((node) => getComputedStyle(node).fontFamily === family);
+      }), `Configured lesson uses a conflicting learner-facing font: ${lesson.path}`);
       await page.evaluate(() => {
         document.documentElement.dataset.scormPackage = "true";
         window.dispatchEvent(new Event("course-progress:request-state"));
@@ -169,11 +182,16 @@ try {
     const onePageUrl = `${origin}/__verify-one-page/`;
     const onePageConfig = JSON.parse((await readFile(path.join(fixtureDist, "__verify-one-page", "index.html"), "utf8")).match(/<script\b[^>]*data-course-config[^>]*>([\s\S]*?)<\/script>/)?.[1] || "null");
     assert(onePageConfig?.navigationMode === "sections" && onePageConfig.lessons.length === 1 && onePageConfig.navigationLessons.length === 3, "Single-page fixture configuration is incomplete");
-    for (const width of [320, 375, 768, 1280]) {
-      const singleContext = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
+    for (const width of [320, 375, 640, 768, 1280]) {
+      const singleContext = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: width === 640 ? 2 : 1, reducedMotion: "reduce" });
       const single = await singleContext.newPage();
       monitor(single, `single-page ${width}px`, origin);
       await single.goto(onePageUrl, { waitUntil: "networkidle" });
+      assert(await single.evaluate(() => {
+        const family = getComputedStyle(document.body).fontFamily;
+        return [".step-group__tab", ".step-group__panel", ".assessment-sequence__count", ".premium-assessment__option", ".premium-assessment__feedback"]
+          .every((selector) => getComputedStyle(document.querySelector(selector)).fontFamily === family);
+      }), `Single-page interactions lost the shared system font at ${width}px`);
       assert(await single.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Single-page fixture overflows at ${width}px`);
       await single.locator(".lessons-toggle").click();
       assert((await single.locator(".course-links a[data-course-section]").count()) === onePageConfig.navigationLessons.length &&

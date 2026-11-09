@@ -27,7 +27,8 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
 body { margin: 0; min-width: 20rem; background: var(--surface); }
-button, a { font: inherit; }
+button, input, select, textarea { font-family: inherit; }
+button { font-size: inherit; font-weight: inherit; font-style: inherit; line-height: inherit; }
 a { color: inherit; }
 img, svg { display: block; max-width: 100%; }
 

@@ -66,6 +66,8 @@ These instructions apply automatically to every course build and every new or ad
 
 ### Typography
 
+- System sans-serif is the default for all learner-facing text. Use the shared `--course-type-font-sans` token from `src/styles/course-typography.css` or inherit it from the course layout; controls must inherit the family without resetting their sizes or weights. System fonts may render differently across operating systems.
+- Do not add external font services, require laptop font installation or define component-specific text families. An explicitly approved custom font must be licensed, bundled locally as a webfont and fall back to the system stack. Keep intentional monospace code text and functional icon fonts where needed.
 - Every new course must inherit the existing shared typography system through `CourseLayout.astro` and its shared styles.
 - Preserve the established semantic heading levels, font families, sizes, weights, line heights and responsive scaling.
 - Use the existing typography components, classes and `--course-type-*` tokens when building content and interactions.

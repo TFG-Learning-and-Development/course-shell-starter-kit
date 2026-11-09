@@ -74,7 +74,7 @@ For local setup and course testing, see [`docs/testing.md`](docs/testing.md).
 
 ### Typography
 
-The local default is `"Arial Nova", Arial, Helvetica, sans-serif`; no webfont is loaded. Body copy defaults to `1.125rem` with a `1.55` line height, and shared narrow, standard and wide measures are `42rem`, `54rem` and `72rem`.
+The default learner-facing family is the shared system stack `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`; no font installation or external font service is required. The stack is defined by `--course-type-font-sans` in `src/styles/course-typography.css`, and the actual system font may differ by operating system. Body copy defaults to `1.125rem` with a `1.55` line height, and shared narrow, standard and wide measures are `42rem`, `54rem` and `72rem`.
 
 Every new course must inherit this shared system through `CourseLayout.astro`. Preserve its heading hierarchy, font families, sizes, weights, line heights and responsive scaling, and use the existing typography components, classes and tokens for content and interactions. Do not replace or modify shared typography to match a mood board or design board. A heading-specific override is permitted only when explicitly requested and must remain scoped to that heading. Eyebrow content is not permitted. Full role guidance and examples are in [`docs/typography.md`](docs/typography.md).
 

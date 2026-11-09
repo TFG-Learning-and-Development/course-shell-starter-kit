@@ -1,7 +1,8 @@
 /* Course-wide typography settings. Change these values instead of editing typography.css. */
 :root {
-  --course-type-font-sans: "Arial Nova", Arial, Helvetica, sans-serif;
-  --course-type-font-serif: Georgia, "Times New Roman", Times, serif;
+  --course-type-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Keep the legacy editorial selector on the shared family by default. */
+  --course-type-font-serif: var(--course-type-font-sans);
   --course-type-font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
 
   --course-type-body-size: 1.125rem;

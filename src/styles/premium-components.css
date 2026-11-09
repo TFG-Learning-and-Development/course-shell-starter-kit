@@ -163,7 +163,7 @@
 
 .matching-activity { display: grid; gap: var(--course-space-grid); }
 .matching-activity__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, .65fr); gap: 1rem; padding: var(--course-space-card); border: 1px solid var(--line); border-radius: 1rem; background: #fff; }
-.matching-activity select, .reflection-activity textarea { width: 100%; min-height: 3rem; padding: .65rem; border: 2px solid #536168; border-radius: .55rem; color: var(--ink); background: #fff; font: inherit; }
+.matching-activity select, .reflection-activity textarea { width: 100%; min-height: 3rem; padding: .65rem; border: 2px solid #536168; border-radius: .55rem; color: var(--ink); background: #fff; font-size: inherit; font-weight: inherit; line-height: inherit; }
 .matching-activity__result { margin: .5rem 0 0; font-size: var(--course-type-ui-size); font-weight: 700; }
 .matching-activity__actions { display: grid; justify-items: start; gap: .75rem; }
 .matching-activity__summary { max-width: var(--course-type-measure-narrow); margin: 0; font-weight: 700; }

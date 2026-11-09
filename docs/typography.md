@@ -12,7 +12,7 @@ Mood boards and design boards may guide colour, imagery and composition, but the
 
 The shared implementation lives in `src/styles/typography.css`, and the approved course tokens live in `src/styles/course-typography.css`. Do not edit either file for an individual course unless the user explicitly requests a reviewed typography change.
 
-The default sans stack is `"Arial Nova", Arial, Helvetica, sans-serif`. No webfont is bundled or fetched. Arial Nova is used when installed; otherwise the browser continues through the local fallback stack. Serif is an explicit editorial option and code uses the local monospace stack.
+All learner-facing text defaults to `--course-type-font-sans`: `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`. Components inherit or reference this token; controls inherit the family while keeping their existing role sizes and weights. No laptop font installation or external font service is required. The rendered system font may differ across operating systems. The legacy `serif` selector maps to this same default family; code keeps its intentional local monospace stack. Do not introduce component-specific text families. An explicitly approved custom font must be a licensed, locally bundled webfont with the system stack as fallback.
 
 The override order is predictable:
 
@@ -21,7 +21,7 @@ The override order is predictable:
 3. Component properties select a controlled role, family, measure, weight, tone, layout or surface.
 4. A wrapper or component class may override the same `--course-type-*` custom properties for a genuinely local exception.
 
-Only an explicitly requested heading exception may override a token, and it stays scoped:
+Only an explicitly requested heading exception may override a size or weight token, and it stays scoped. An approved course font change instead updates the shared family token with a licensed local webfont and the system fallback:
 
 ```astro
 <div class="short-opening">
@@ -74,7 +74,7 @@ Properties: `as`, `role`, `align`, `measure`, `family`, `weight`, `tone`, `itali
 ```astro
 <TypeText as="h2" role="heading-lg">Choose the safe next action</TypeText>
 <TypeText as="p" role="body" measure="narrow">Normal instructional explanation.</TypeText>
-<TypeText as="p" role="display-md" family="serif" italic>Optional editorial emphasis.</TypeText>
+<TypeText as="p" role="display-md" italic>Optional editorial emphasis.</TypeText>
 ```
 
 ### `TextLayout`
@@ -94,11 +94,11 @@ Use `bleed="viewport"` only inside a container when a surface should extend to t
 
 ### `QuoteBlock`
 
-Properties: `quote`, `citation`, `source`, `variant`, `family` and `surface`. Variants are `standard`, `pull`, `center`, `rule` and `surface`. Quotes default to sans; serif is opt-in.
+Properties: `quote`, `citation`, `source`, `variant`, `family` and `surface`. Variants are `standard`, `pull`, `center`, `rule` and `surface`. Quotes use the shared system sans stack by default; the legacy `family="serif"` setting currently resolves to the same stack.
 
 ```astro
 <QuoteBlock quote="Keep the required action easy to find." citation="Course principle" variant="rule" />
-<QuoteBlock quote="A short editorial aside." family="serif" variant="pull" />
+<QuoteBlock quote="A short editorial aside." variant="pull" />
 ```
 
 ### `StatisticBlock`
@@ -132,10 +132,10 @@ Properties: `items` and `variant`. Variants are `stacked`, `split` and `grid`.
 
 Surface and tone names map to the shell’s existing `--surface`, `--surface-soft`, `--ink`, `--muted`, `--line`, `--course-accent` and `--course-accent-strong` tokens. The typography layer does not introduce a separate course palette. Success, warning and error remain semantic supporting tokens rather than course-brand colours.
 
-Display and serif treatments are opt-in. Keep long or required reading in sans `body` or `lead`, avoid putting essential information only in an aside or quote, and simplify a layout rather than shrinking or truncating real course copy.
+Display treatments are opt-in. Keep long or required reading in `body` or `lead`, avoid putting essential information only in an aside or quote, and simplify a layout rather than shrinking or truncating real course copy.
 
 ## Portability and verification
 
-The system uses only local system fonts, Astro markup and CSS. It adds no DaisyUI, Iconify, font service, client-side runtime, analytics or LMS behavior. Normal builds contain only the course page; typography specimens are rendered solely by the temporary `COURSE_VERIFY_COMPONENTS=1` fixture used by `npm run verify`.
+The default uses only system fonts, Astro markup and CSS. It adds no DaisyUI, Iconify, font service, client-side runtime, analytics or LMS behavior. Normal builds contain only the course page; typography specimens are rendered solely by the temporary `COURSE_VERIFY_COMPONENTS=1` fixture used by `npm run verify`.
 
-At handover, run and report `npm run build` and `npm run verify`, explicitly including the typography result. The verifier checks the shell at the required viewport sizes, the typography/components fixture at mobile, tablet and desktop sizes, a 200% browser-zoom equivalent (a 640 CSS-pixel viewport rendered at 2x scale), responsive columns, role weights, scoped overrides, font stacks, overflow, clipping, external requests, keyboard focus and runtime errors.
+At handover, run and report `npm run build` and `npm run verify`, explicitly including the typography result. The verifier checks both course formats at mobile, tablet and desktop widths, including a 640 CSS-pixel viewport at 2x device scale as a 200% zoom **equivalent** for a 1280px window. It also checks responsive columns, role weights, scoped overrides, font stacks, overflow, external requests, keyboard focus and runtime errors. This equivalent is not a native browser-zoom or cross-platform test; check those manually when required for release.
