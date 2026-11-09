@@ -16,6 +16,8 @@ In **Review**, compare the rendered course against its storyboard and mood board
 
 Enter **Release preparation** only when the user explicitly requests packaging, a release candidate or release preparation. A request for packaged LMS testing also enters this stage. Build the latest approved source, run `npm run package:scorm` and `npm run verify:scorm`, then record the source commit or working-tree state represented by the ZIP. Separate simulated LMS results from outstanding live Oracle acceptance. Packaging does not authorise publishing, LMS upload or merging. Learner-facing edits after packaging make the ZIP stale until rebuilt.
 
+The direct instruction “Package this course” is a [Release preparation shortcut](../AGENTS.md#packaging-shortcut); mentioning it as an example or asking about it is not a packaging request.
+
 ## Check both course formats
 
 - **Multi-page (default production example):** open `/`, then use Lessons and the page's previous/next navigation to reach each configured lesson. Confirm locked lessons explain the requirement and unlock only after their required activities are complete. When inspecting a packaged course separately, lesson links must end in explicit `index.html` for Oracle-compatible hosting.

@@ -10,6 +10,13 @@ Explicit user instructions determine the stage; default to **Preview** when no s
 - **Review:** Compare the rendered course with its storyboard and mood board. Check content coverage, responsive layout, accessibility, interactions, progress and resume; fix issues and rerun affected checks. Distinguish automated results from human visual/content approval. Do not generate or verify a ZIP unless the user explicitly requests packaged LMS testing; that request enters Release preparation.
 - **Release:** Enter only on an explicit request for packaging, a release candidate or release preparation. Build the latest approved source, package it and run package verification. Report the source commit or working-tree state represented by the ZIP, separate simulated LMS results from live Oracle acceptance and list outstanding live checks. Packaging does not authorise publishing, LMS upload or merging. Learner-facing source changes make the package stale until rebuilt.
 
+### Packaging shortcut
+
+- A direct instruction to **“Package this course”** (case-insensitive, with ordinary punctuation) authorises Release preparation. Quoted examples, discussion of the phrase and questions about it are not instructions to package.
+- Package the current course's latest saved source as SCORM 1.2 with the existing `build`, `verify`, `package:scorm` and `verify:scorm` scripts. Preserve approved design, content, completion requirements, tracking, resume and Oracle session handling.
+- Confirm the browser and manifest titles are both `Content`; do not silently rewrite approved course identity to make them match. Verify ZIP integrity, root-level `imsmanifest.xml`, the launch path and referenced assets. If a check fails or the title conflicts with approved configuration, report the issue and do not call the package ready.
+- Report the ZIP path, source commit or working-tree state, check results and remaining live Oracle acceptance. Simulated LMS checks are not live acceptance. The shortcut does not authorise committing, merging, pushing, publishing or uploading; those actions require separate instructions.
+
 ## Course format comes from the storyboard
 
 - Read the storyboard's explicit course-format instruction **before** planning routes or building pages. Record the selected format in `courseConfig.navigationMode` and the build summary. Use the storyboard field `Course format: One-scroll / Multi-page`: `One-scroll` maps to `navigationMode: "sections"`; `Multi-page` maps to `navigationMode: "lessons"`.

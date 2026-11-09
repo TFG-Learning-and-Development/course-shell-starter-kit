@@ -113,6 +113,8 @@ Explicit user instructions select the stage; otherwise use **Preview**. Report t
 
 Packaging does not authorise publishing, LMS upload or merging. Standalone use saves browser progress; a packaged launch uses the LMS-provided SCORM 1.2 API.
 
+**Packaging shortcut:** A direct instruction to “Package this course” enters Release preparation; quoted examples or questions about the phrase do not. Follow [AGENTS.md](AGENTS.md#packaging-shortcut), including the `Content` title and ZIP checks. Packaging alone does not authorise a commit, push or upload.
+
 ## Hosting assumptions
 
 The default build is a static site in `dist/` intended to be served at a domain root. A static host must serve `dist/index.html` for `/`, each configured lesson's `index.html`, and generated files beneath `dist/_astro/` and `dist/assets/`.
