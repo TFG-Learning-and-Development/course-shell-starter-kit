@@ -12,6 +12,13 @@ This repository is a reusable Astro course shell.
 - Do not automatically add learner-facing exploration tally captions such as “X of Y cards/items/steps explored”. Track exploration internally and reflect completion through the established Progress interface. Do not invent these captions during course builds. If approved storyboard copy explicitly contains a conflicting tally, flag the conflict rather than silently changing approved wording.
 - Compare rendered learner copy against the storyboard. Account for every learner-facing passage and record permitted exclusions. Report unresolved differences; a successful build alone does not establish verbatim fidelity.
 
+## Mandatory access within an open lesson
+
+- **Never lock or gate content within an accessible lesson. Learners must be able to access every section, activity and interaction item without first completing, answering, exploring or watching another item.** Make every card, tab, process step, carousel item and assessment question directly accessible from the start. The authored step array preserves display order and numbering; `ordered` must not disable later steps.
+- Preserve intended display order and Previous/Next controls. Normal click-to-reveal behaviour, answer-dependent feedback, valid-input submission rules and genuine first/last navigation boundaries are permitted. Do not require an answer, correct answer, completed video or explored item to access other content in the lesson.
+- Keep access separate from completion: required milestones, valid attempts, watch thresholds and exploration children still need their approved evidence. Merely exposing an item grants no credit. Preserve saved state, resume and earned progress. `completion.sequentialUnlocking` may still gate **between lessons** when configured; it never gates content inside an accessible lesson.
+- If an approved storyboard explicitly requires an in-lesson prerequisite, flag the conflict for an approved decision. Do not silently change its copy or implement the internal lock.
+
 ## Build stages
 
 Explicit user instructions determine the stage; default to **Preview** when no stage is stated.
@@ -72,7 +79,7 @@ These instructions apply automatically to every course build and every new or ad
 - Support keyboard operation, semantic controls, accessible names and relationships, visible focus, readable contrast, reduced motion and generous touch targets. Stack or wrap layouts and contain necessary internal scrolling before labels or controls become cramped.
 - Use typed content/configuration props and unique instance IDs. Keep components independent of course branding, lesson or item counts, selectors for a specific course and storage identities. Multiple instances must operate independently.
 - Register only approved required milestones and use the existing tracking, persistence and restoration contracts. Empty rendering, hidden content, navigation and restoration must not invent an attempt. Visible initial exploration follows the approved component rules. Keep reflection privacy and LMS-attempt isolation intact.
-- Use `StepGroup` with `ordered` and `compactVertical` for an approved visible process when appropriate; letters and labels come from the supplied content. Use `AssessmentSequence` for an approved series of single-choice questions, with a distinct SUBMIT milestone per question. Selecting an answer shows its configured feedback and records a valid attempt; arrows and section links only navigate.
+- Use `StepGroup` with `ordered` and `compactVertical` for an approved visible process when appropriate; letters and labels come from the supplied content, and every step remains directly accessible. Use `AssessmentSequence` for an approved series of single-choice questions; every question is reachable before any answer, with a distinct SUBMIT milestone per question. Selecting an answer shows its configured feedback and records a valid attempt; arrows and section links only navigate.
 
 #### Review before handover
 

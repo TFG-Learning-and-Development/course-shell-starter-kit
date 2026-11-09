@@ -33,6 +33,8 @@ At mobile and desktop widths, check the logo, Lessons and Progress panels, keybo
 
 Complete the configured content and interactions: the compact ordered steps should credit each visible step; each assessment answer selection should show feedback immediately and count as a valid attempt even when incorrect. Check question arrows, refresh, Back/Forward and resume. Confirm completion appears only after every required milestone is earned. Use `npm run verify` for the browser and simulated-LMS scenarios, including save failure and restoration; inspect its final output for errors.
 
+In both course formats, check a fresh and a restored lesson: open a later card, tab, process step, carousel item and assessment question without completing earlier items. Confirm all are accessible, no unearned milestone appears, and completion still requires approved evidence. Distinguish these in-lesson checks from configured between-lesson unlocking.
+
 ## Record an issue
 
 Note the branch/commit, course URL, viewport width, browser, steps taken, expected result, actual result and a screenshot or console error when available. Include whether the issue occurred in standalone browser use, the simulated LMS verifier or a live Oracle launch. Keep learner names and reflection text out of issue reports.

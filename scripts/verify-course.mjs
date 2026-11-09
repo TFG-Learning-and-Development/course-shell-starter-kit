@@ -229,6 +229,24 @@ try {
     monitor(singleLms, "single-page simulated LMS", origin);
     await singleLms.goto(onePageUrl, { waitUntil: "networkidle" });
     await assertNoExplorationTally(singleLms, "#fixture-steps");
+    assert(!(await singleLms.locator('#fixture-steps [data-step-id="act"]').isDisabled()), "One-scroll ordered steps gated the final step");
+    await singleLms.locator('#fixture-steps [data-step-id="act"]').click();
+    await singleLms.locator('#fixture-steps [role=tabpanel]:not([hidden])').scrollIntoViewIfNeeded();
+    await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("act"));
+    assert((await singleLms.locator("#fixture-steps [data-step-count]").textContent()) === "Step 3 of 3" &&
+      !(await singleLms.locator('#fixture-steps [data-step-id="choose"]').isDisabled()) &&
+      !JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(1), "Direct final-step access granted completion or blocked another step");
+    await singleLms.reload({ waitUntil: "networkidle" });
+    assert((await singleLms.locator('#fixture-steps [data-step-id="act"]').getAttribute("aria-selected")) === "true" &&
+      !(await singleLms.locator('#fixture-steps [data-step-id="choose"]').isDisabled()) &&
+      JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).e[1].includes("act") &&
+      !JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(1), "One-scroll step access or earned child state did not restore");
+    await singleLms.locator("#fixture-quiz [data-question-next]").click();
+    assert(await singleLms.locator("#fixture-quiz-second").isVisible() &&
+      !JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(3), "Later one-scroll question required an earlier answer or earned an empty attempt");
+    await singleLms.reload({ waitUntil: "networkidle" });
+    assert(await singleLms.locator("#fixture-quiz-second").isVisible() &&
+      !JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(3), "Later unanswered question did not restore");
     await singleLms.locator("#fixture-intro").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(0));
     await singleLms.locator("[data-progress-trigger]").click();
@@ -242,16 +260,17 @@ try {
     await singleLms.locator("[data-question-prev]").click();
     await singleLms.locator("#fixture-quiz-first input[type=radio]").last().check();
     assert(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(2), "First question did not earn its independent attempt");
+    await singleLms.locator('#fixture-steps [data-step-id="notice"]').click();
     await singleLms.locator("#fixture-steps [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("notice"));
-    assert(JSON.stringify(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).e[1]) === JSON.stringify(["notice"]) &&
+    assert(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).e[1].includes("act") &&
+      !JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(1) &&
       !(await singleLms.locator('#fixture-steps [data-step-id="notice"] .step-group__check').isHidden()), "First visible step lost its individual exploration state");
     await assertNoExplorationTally(singleLms, "#fixture-steps");
-    assert(await singleLms.locator('#fixture-steps [data-step-id="act"]').isDisabled(), "Ordered steps exposed a later row too early");
     await singleLms.locator("#fixture-steps [data-step-next]").click();
     await singleLms.locator("#fixture-steps [data-step-next]").click();
     singleMock = await lmsState(singleLms);
-    assert(JSON.stringify(JSON.parse(singleMock.values["cmi.suspend_data"]).e[1]) === JSON.stringify(["notice", "choose", "act"]) &&
+    assert(["notice", "choose", "act"].every((id) => JSON.parse(singleMock.values["cmi.suspend_data"]).e[1].includes(id)) &&
       singleMock.values["cmi.core.lesson_status"] === "completed" && singleMock.errors.length === 0, "Ordered exploration or all-required completion failed");
     await assertNoExplorationTally(singleLms, "#fixture-steps");
     await singleLms.reload({ waitUntil: "networkidle" });
@@ -274,6 +293,33 @@ try {
     assert(navConfig.lessons.length === 2 && navConfig.lessons[1].path === "/scenario/review/", "Nested navigation fixture is incomplete");
     const navStart = `${origin}/__verify-nav/`;
     const navReview = `${origin}/__verify-nav/scenario/review/`;
+    const multiAccessContext = await browser.newContext();
+    await installMockLms(multiAccessContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": suspend(navConfig, ["fixture-response", "fixture-nav-steps"]) }));
+    const multiAccess = await multiAccessContext.newPage();
+    monitor(multiAccess, "multi-page in-lesson access", origin);
+    await multiAccess.goto(navReview, { waitUntil: "networkidle" });
+    assert(!(await multiAccess.locator('#fixture-nav-steps [data-step-id="end"]').isDisabled()), "Multi-page ordered steps gated the final step");
+    await multiAccess.locator('#fixture-nav-steps [data-step-id="start"]').focus();
+    await multiAccess.keyboard.press("End");
+    await multiAccess.locator('#fixture-nav-steps [role=tabpanel]:not([hidden])').scrollIntoViewIfNeeded();
+    await multiAccess.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[2]?.includes("end"));
+    let multiState = JSON.parse((await lmsState(multiAccess)).values["cmi.suspend_data"]);
+    assert((await multiAccess.locator("#fixture-nav-steps [data-step-count]").textContent()) === "Step 3 of 3" &&
+      !multiState.c.includes(2) && !multiState.e[2].includes("middle"), "Direct final-step access granted an unearned multi-page completion");
+    await multiAccess.reload({ waitUntil: "networkidle" });
+    multiState = JSON.parse((await lmsState(multiAccess)).values["cmi.suspend_data"]);
+    assert((await multiAccess.locator('#fixture-nav-steps [data-step-id="end"]').getAttribute("aria-selected")) === "true" &&
+      !(await multiAccess.locator('#fixture-nav-steps [data-step-id="middle"]').isDisabled()) &&
+      multiState.e[2].includes("end") && !multiState.c.includes(2), "Multi-page direct access or partial exploration did not restore");
+    await multiAccess.locator('#fixture-nav-steps [data-step-id="start"]').click();
+    await multiAccess.locator('#fixture-nav-steps [role=tabpanel]:not([hidden])').scrollIntoViewIfNeeded();
+    await multiAccess.locator('#fixture-nav-steps [data-step-id="middle"]').click();
+    await multiAccess.locator('#fixture-nav-steps [role=tabpanel]:not([hidden])').scrollIntoViewIfNeeded();
+    await multiAccess.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(2));
+    multiState = JSON.parse((await lmsState(multiAccess)).values["cmi.suspend_data"]);
+    assert(["start", "middle", "end"].every((id) => multiState.e[2].includes(id)) &&
+      !multiState.c.includes(1) && (await multiAccess.locator("[data-progress-course-count]").textContent()).includes("2 of 3 completed"), "Multi-page steps lost exploration requirements or Progress credit");
+    await multiAccessContext.close();
     const navPartial = suspend(navConfig, ["fixture-response"]);
     const navigationContext = await browser.newContext();
     await installMockLms(navigationContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": navPartial }));
@@ -364,6 +410,31 @@ try {
 
     const interactionConfig = await fixtureConfig("__verify-interactions");
     assert(interactionConfig.lessons.length === 1, "Single-lesson interaction fixture is incomplete");
+    const directAccessContext = await browser.newContext();
+    await installMockLms(directAccessContext, lmsSeed());
+    const directAccess = await directAccessContext.newPage();
+    monitor(directAccess, "direct interaction access", origin);
+    await directAccess.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
+    await directAccess.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
+    await directAccess.locator("#fixture-carousel [data-carousel-next]").click();
+    await directAccess.locator("#fixture-items [data-category-choice=apply]").click();
+    await directAccess.locator('#fixture-flips [data-flip-id="back"]').click();
+    let directState = JSON.parse((await lmsState(directAccess)).values["cmi.suspend_data"]);
+    assert((await directAccess.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta" &&
+      (await directAccess.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" &&
+      (await directAccess.locator("#fixture-items [data-item-choice=reflect]").getAttribute("aria-pressed")) === "true" &&
+      (await directAccess.locator('#fixture-flips [data-flip-id="back"]').getAttribute("aria-expanded")) === "true" &&
+      JSON.stringify(directState.e[3]) === JSON.stringify(["reflect"]) &&
+      JSON.stringify(directState.e[6]) === JSON.stringify(["back"]) &&
+      !directState.c.includes(3) && !directState.c.includes(6), "Later tabs, carousel items, choices or cards required earlier items or granted unearned completion");
+    await directAccess.reload({ waitUntil: "networkidle" });
+    directState = JSON.parse((await lmsState(directAccess)).values["cmi.suspend_data"]);
+    assert((await directAccess.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta" &&
+      (await directAccess.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" &&
+      (await directAccess.locator("#fixture-items [data-item-choice=reflect]").getAttribute("aria-pressed")) === "true" &&
+      JSON.stringify(directState.e[6]) === JSON.stringify(["back"]) &&
+      !(await directAccess.locator('#fixture-flips [data-flip-id="front"]').isDisabled()), "Direct item access or earned evidence did not restore");
+    await directAccessContext.close();
     const restoredAnswer = JSON.parse(suspend(interactionConfig, ["fixture-assessment", "fixture-knowledge"]));
     restoredAnswer.u = { "fixture-assessment:answer": 1 };
     const answerContext = await browser.newContext();
@@ -620,6 +691,21 @@ try {
     await components.goto(`${origin}/__verify-components/`, { waitUntil: "networkidle" });
     assert((await components.locator(".responsive-table").count()) > 0, "Shared component fixture is missing");
     assert(await components.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "Shared component fixture overflows");
+    await components.locator('#gallery-reveals [data-reveal-id="two"]').click();
+    assert((await components.locator('#gallery-reveals [data-reveal-id="two"]').getAttribute("aria-expanded")) === "true" &&
+      (await components.locator('#gallery-reveals [data-reveal-id="one"]').getAttribute("aria-expanded")) === "false", "Later reveal required an earlier item");
+    await components.locator('#gallery-flip-cards [data-flip-id="respond"]').click();
+    assert((await components.locator('#gallery-flip-cards [data-flip-id="respond"]').getAttribute("aria-expanded")) === "true" &&
+      (await components.locator('#gallery-flip-cards [data-flip-id="observe"]').getAttribute("aria-expanded")) === "false", "Later card required an earlier card");
+    await components.locator("#gallery-carousel [data-carousel-next]").click();
+    assert((await components.locator("#gallery-carousel [data-carousel-count]").textContent()) === "2 of 2", "Later carousel item required the first item");
+    await components.locator('#gallery-compact-steps [data-step-id="review"]').click();
+    assert((await components.locator('#gallery-compact-steps [data-step-id="review"]').getAttribute("aria-selected")) === "true" &&
+      !(await components.locator('#gallery-compact-steps [data-step-id="choose"]').isDisabled()), "Gallery ordered step restricted direct access");
+    await components.locator("#gallery-sequence [data-question-next]").click();
+    assert(await components.locator("#gallery-sequence-second").isVisible() &&
+      !(await components.locator("#gallery-sequence-first input[type=radio]:checked").count()), "Later assessment question required an earlier answer");
+    await components.locator("#gallery-sequence [data-question-prev]").click();
     await components.locator("#gallery-knowledge-check input[type=radio]").first().check();
     assert(await components.locator("#gallery-knowledge-check [data-assessment-feedback]").isVisible(), "Knowledge-check feedback did not appear on selection");
     assert(!(await components.locator("#gallery-assessment input[type=radio]:checked").count()), "Independent assessment instance was changed");
