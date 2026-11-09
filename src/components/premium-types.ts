@@ -7,6 +7,15 @@ export type AssessmentQuestion = {
   correctFeedback: string;
   incorrectFeedback: string;
 };
+export type AssessmentSequenceQuestion = {
+  id: string;
+  title: string;
+  prompt: string;
+  options: readonly string[];
+  correctIndex: number;
+  correctFeedback: string;
+  incorrectFeedback: string;
+};
 export type ExplorerItem = {
   id: string;
   categoryId?: string;

@@ -1,0 +1,46 @@
+---
+import CoursePage from "../../src/components/CoursePage.astro";
+import StepGroup from "../../src/components/StepGroup.astro";
+import AssessmentSequence from "../../src/components/AssessmentSequence.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+
+const config: CourseConfig = {
+  identity: { id: "single-page-fixture", title: "Single-page fixture", description: "Neutral section-navigation example" },
+  brand: { homeLabel: "Go to the overview", logoSrc: "/assets/demo/brand-mark.svg", logoAlt: "Neutral course mark", logoTreatment: "transparent" },
+  theme: defaultCourseTheme,
+  lessons: [{ id: "entry", path: "/", label: "Example course" }],
+  navigationMode: "sections",
+  navigationLessons: [
+    { id: "start", title: "Start here", targetId: "fixture-intro" },
+    { id: "process", title: "Explore the process", targetId: "fixture-steps" },
+    { id: "check", title: "Check your understanding", targetId: "fixture-quiz" },
+  ],
+  sections: [
+    { id: "fixture-intro", label: "Introduction", milestoneIds: ["fixture-intro"] },
+    { id: "fixture-steps", label: "Ordered process", milestoneIds: ["fixture-steps"] },
+    { id: "fixture-quiz", label: "Decision checks", milestoneIds: ["fixture-quiz-first", "fixture-quiz-second"] },
+  ],
+  completion: { storageKey: "astro-course-progress:single-page-fixture:v1", sequentialUnlocking: true, milestones: [
+    { id: "fixture-intro", label: "Read the introduction", type: "view", targetId: "fixture-intro", path: "/", required: true },
+    { id: "fixture-steps", label: "Explore all steps", type: "explore", targetId: "fixture-steps", path: "/", requiredItems: ["notice", "choose", "act"], required: true },
+    { id: "fixture-quiz-first", label: "Answer the first check", type: "submit", targetId: "fixture-quiz-first", path: "/", required: true },
+    { id: "fixture-quiz-second", label: "Answer the second check", type: "submit", targetId: "fixture-quiz-second", path: "/", required: true },
+  ] },
+  package: { identifier: "single-page-fixture-scorm-12", filename: "Single-Page-Fixture.zip", launchFile: "index.html", title: "Single-page fixture" },
+};
+validateCourseConfig(config);
+---
+<CoursePage lessonId="entry" {config}>
+  <section class="premium-section" id="fixture-intro" data-completion-id="fixture-intro">
+    <div class="container"><h1>Choose a useful learning pattern</h1><p>Move through the sections on this page. Progress tracks only the configured requirements.</p></div>
+  </section>
+  <StepGroup id="fixture-steps" title="Explore a short process" intro="Follow each step in order." ordered compactVertical panelImage="/assets/demo/editorial-landscape.svg" steps={[
+    { id: "notice", letter: "N", title: "Notice", body: "Read the approved content and identify the learner action." },
+    { id: "choose", letter: "C", title: "Choose a useful pattern with a longer label", body: "Select the smallest interaction that serves the goal." },
+    { id: "act", letter: "A", title: "Act", body: "Build, check and revise the course." },
+  ]} />
+  <AssessmentSequence id="fixture-quiz" title="Check the decisions" intro="Select an answer for each question." questions={[
+    { id: "first", title: "Choose the first action", prompt: "A learner needs to compare ideas. What should the activity support?", options: ["A meaningful comparison", "An unrelated timer"], correctIndex: 0, correctFeedback: "A comparison serves the goal.", incorrectFeedback: "A timer does not support the comparison." },
+    { id: "second", title: "Choose the next action", prompt: "What should feedback explain?", options: ["Only the selected option", "A useful next step"], correctIndex: 1, correctFeedback: "A next step helps learners act.", incorrectFeedback: "Explain what the learner can do next." },
+  ]} />
+</CoursePage>

@@ -54,17 +54,23 @@ Run `npm run dev` and open `http://localhost:4321/__component-gallery/` for the 
 
 Start with `src/data/course.ts`, then configure ordered routes and package identity in `src/data/course-config.ts` and real milestone requirements in `src/data/course-completion.ts`. The first lesson uses `/`; later paths may be named and nested, such as `/topics/practice/`. Add a matching `courseData.lessonPages` entry for each additional lesson. Keep every milestone `targetId` in sync with an actual rendered element. Add course-specific assets under `public/assets/`.
 
+Read the storyboard field `Course format: One-scroll / Multi-page` before choosing routes. Set the single format setting, `courseConfig.navigationMode`, to `"sections"` for One-scroll or `"lessons"` for Multi-page. A One-scroll course can have multiple logical lessons on one continuous page: keep one page route at `/` and configure `navigationLessons` with each Lessons-menu title and section `targetId`. Optionally configure `sections` to group required activities under named Progress headings; each milestone must appear in exactly one group. Multi-page retains separate lesson routes, previous/next links, sequential unlocking and package-safe explicit `index.html` links. Preserve the existing format for maintenance unless a new format is requested. See [`docs/course-engine.md`](docs/course-engine.md) for both examples.
+
 For a real build, treat the approved storyboard as the source for content, sequence, questions and required activities. Use the mood board and supplied assets for the course theme, imagery and composition. Select the smallest useful set of premium patterns, register the actual milestones during the build, and use unique course, activity and storage identities. If the brief does not establish content or a completion requirement, stop and request the approved decision rather than inventing it.
 
 Do not add eyebrow content or small contextual labels above headings. Begin each section with its semantic heading, followed by an optional introduction when useful; the starter intentionally provides no eyebrow data field, component property, typography role or styling.
 
 The default header is logo-only: keep the home link's accessible name, but do not add a visible course-name label beside the logo. The logo slot accepts wide or square image/SVG artwork without stretching. Place Lessons and Progress together at the padded right edge. The Lessons button opens a dark, internally scrolling overlay with configured lesson numbers starting at 00, titles, current-lesson highlighting and lock explanations from the shared unlock state. Do not place individual lesson links in the header row. Preserve package-safe routes, keyboard focus, Escape and outside-click dismissal, and mutual dismissal with Progress on desktop and mobile.
 
+Set `brand.logoTreatment` to `"transparent"` for artwork intended to sit directly on the header colour; the default `"badge"` treatment uses a white logo slot. Choose the treatment explicitly from the supplied artwork and check its contrast. The compact ordered `StepGroup` and one-question-at-a-time `AssessmentSequence` are documented in [`docs/components.md`](docs/components.md) and previewed with neutral content in the development gallery.
+
 The footer sentence is fixed for every course as `Return to People Connect to continue`. Keep it as plain static text: do not turn it into a link or button, attach completion tracking, or add an LMS action. Keep Back to top in its default compact capsule treatment with the upward arrow, keyboard focus, anchor behaviour and reduced-motion support. The footer background is course-specific and should follow the supplied mood board or design board through the theme colour settings, with readable text contrast.
 
 At mobile widths, the footer uses the standard centred vertical layout: a naturally wrapping centred message above the natural-width capsule, separated by `16px`, with `24px` top/bottom padding, `20px` side padding, a `144px` minimum height, and a `44px` minimum capsule touch height. The footer remains in normal page flow and may grow for longer wrapping; tablet and desktop retain the horizontal row.
 
 See [`docs/components.md`](docs/components.md) and [`docs/typography.md`](docs/typography.md) before composing new sections, and [`docs/course-assets.md`](docs/course-assets.md) before adding media.
+
+For manager clone-and-test steps, see [`docs/manager-testing.md`](docs/manager-testing.md).
 
 ### Typography
 

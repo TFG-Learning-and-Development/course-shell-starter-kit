@@ -1,27 +1,28 @@
 ---
 import CourseProgress from "./CourseProgress.astro";
 import LessonNavigation from "./LessonNavigation.astro";
-import { courseConfig } from "../data/course-config";
+import { courseConfig, type CourseConfig } from "../data/course-config";
 import { courseData } from "../data/course";
 import CourseLayout from "../layouts/CourseLayout.astro";
 
-interface Props { lessonId: string }
-const { lessonId } = Astro.props as Props;
-const index = courseConfig.lessons.findIndex((lesson) => lesson.id === lessonId);
+interface Props { lessonId: string; config?: CourseConfig }
+const { lessonId, config = courseConfig } = Astro.props as Props;
+const index = config.lessons.findIndex((lesson) => lesson.id === lessonId);
 if (index < 0) throw new Error(`Unknown lesson: ${lessonId}`);
-const current = courseConfig.lessons[index];
-const previous = courseConfig.lessons[index - 1];
-const next = courseConfig.lessons[index + 1];
-const serializedConfig = JSON.stringify(courseConfig).replaceAll("<", "\\u003c");
+const current = config.lessons[index];
+const previous = config.lessons[index - 1];
+const next = config.lessons[index + 1];
+const sectionNavigation = config.navigationMode === "sections";
+const serializedConfig = JSON.stringify(config).replaceAll("<", "\\u003c");
 ---
 
-<CourseLayout title={courseConfig.identity.title} description={courseConfig.identity.description} theme={courseConfig.theme}>
+<CourseLayout title={config.identity.title} description={config.identity.description} theme={config.theme}>
   <div class="course-page" id="top" data-course-path={current.path} data-access-pending>
     <header class="site-header">
       <nav class="course-nav container" aria-label="Course lessons">
-        <a class="brand-link" href="/" aria-label={courseConfig.brand.homeLabel} data-lesson-path="/">
-          <span class="brand-mark" aria-hidden="true">
-            {courseConfig.brand.logoSrc ? <img src={courseConfig.brand.logoSrc} alt={courseConfig.brand.logoAlt || "Course logo"} /> : "CS"}
+        <a class="brand-link" href="/" aria-label={config.brand.homeLabel} data-lesson-path="/">
+          <span class:list={["brand-mark", { "brand-mark--transparent": config.brand.logoTreatment === "transparent" }]} aria-hidden="true">
+            {config.brand.logoSrc ? <img src={config.brand.logoSrc} alt={config.brand.logoAlt || "Course logo"} /> : "CS"}
           </span>
         </a>
         <div class="nav-actions">
@@ -32,7 +33,12 @@ const serializedConfig = JSON.stringify(courseConfig).replaceAll("<", "\\u003c")
             </button>
             <div class="course-links" id="course-links" hidden>
               <h2 class="course-links__heading">Course lessons</h2>
-              {courseConfig.lessons.map((lesson, lessonIndex) => (
+              {sectionNavigation ? config.navigationLessons?.map((lesson, lessonIndex) => (
+                <a href={`#${lesson.targetId}`} data-course-section={lesson.targetId} aria-current={lessonIndex === 0 ? "location" : undefined}>
+                  <span class="course-links__number" aria-hidden="true">{String(lessonIndex).padStart(2, "0")}</span>
+                  <span class="course-links__body"><span>{lesson.title}</span></span>
+                </a>
+              )) : config.lessons.map((lesson, lessonIndex) => (
                 <a href={lesson.path} data-lesson-path={lesson.path} data-lesson-index={lessonIndex} aria-current={lesson.id === current.id ? "page" : undefined}>
                   <span class="course-links__number" aria-hidden="true">{String(lessonIndex).padStart(2, "0")}</span>
                   <span class="course-links__body"><span>{lesson.label}</span><small data-lock-reason hidden></small></span>
@@ -43,13 +49,13 @@ const serializedConfig = JSON.stringify(courseConfig).replaceAll("<", "\\u003c")
               ))}
             </div>
           </div>
-          <CourseProgress config={courseConfig} />
+          <CourseProgress {config} />
         </div>
       </nav>
     </header>
     <p class="course-access-notice container" data-access-notice role="status" hidden></p>
     <main id="main-content"><slot /></main>
-    <LessonNavigation previous={previous} next={next} />
+    {!sectionNavigation && config.lessons.length > 1 && <LessonNavigation previous={previous} next={next} />}
     <footer class="course-footer">
       <div class="container footer-inner">
         <p>{courseData.footer.text}</p>
@@ -78,6 +84,23 @@ const serializedConfig = JSON.stringify(courseConfig).replaceAll("<", "\\u003c")
       if (toggle?.getAttribute("aria-expanded") === "true" && !(event.target as Element).closest(".lessons-menu")) close();
     });
     document.addEventListener("keydown", (event) => { if (event.key === "Escape" && toggle?.getAttribute("aria-expanded") === "true") { close(); toggle.focus(); } });
+    const sectionLinks = [...document.querySelectorAll<HTMLAnchorElement>(".course-links a[data-course-section]")];
+    if (sectionLinks.length) {
+      let scheduled = false;
+      const updateCurrentSection = () => {
+        scheduled = false;
+        const threshold = scrollY + (document.querySelector(".site-header")?.getBoundingClientRect().height || 0) + 48;
+        const current = sectionLinks.reduce((chosen, link) => {
+          const target = document.getElementById(link.dataset.courseSection || "");
+          return target && target.getBoundingClientRect().top + scrollY <= threshold ? link : chosen;
+        }, sectionLinks[0]);
+        sectionLinks.forEach((link) => link === current ? link.setAttribute("aria-current", "location") : link.removeAttribute("aria-current"));
+      };
+      const scheduleCurrentSection = () => { if (!scheduled) { scheduled = true; requestAnimationFrame(updateCurrentSection); } };
+      addEventListener("scroll", scheduleCurrentSection, { passive: true });
+      addEventListener("resize", scheduleCurrentSection);
+      scheduleCurrentSection();
+    }
     const update = (detail: { unlockedPaths: string[]; completedIds: string[]; milestones: { id: string; path: string; required: boolean }[] }) => {
       const unlocked = new Set(detail.unlockedPaths);
       const completed = new Set(detail.completedIds);

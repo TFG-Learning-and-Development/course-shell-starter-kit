@@ -6,7 +6,7 @@ interface Props {
 }
 
 const { config } = Astro.props as Props;
-const runtimeConfig = { lessons: config.lessons, ...config.completion };
+const runtimeConfig = { lessons: config.lessons, sections: config.sections || [], ...config.completion };
 ---
 
 <div class="course-progress" data-course-progress>
@@ -58,6 +58,7 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
 
     const milestones = config.milestones as Milestone[];
     const lessons = config.lessons as { id: string; path: string; label: string }[];
+    const sections = config.sections as { id: string; label: string; milestoneIds: string[] }[];
     const requiredMilestones = milestones.filter((milestone) => milestone.required);
     const sequentialUnlocking = config.sequentialUnlocking === true;
     const currentPath = document.querySelector<HTMLElement>("[data-course-path]")?.dataset.coursePath || location.pathname;
@@ -316,6 +317,14 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
       if (problem) { console.error(`[course-progress] ${problem}`); showSaveError(`Course activity setup error: ${problem}`); }
       else validatedTargets.add(milestone.id);
     });
+    sections.forEach((section) => {
+      if (!section.milestoneIds.some((id) => milestones.some((item) => item.id === id && item.path === currentPath))) return;
+      if (!document.getElementById(section.id)) {
+        const problem = `Unresolved progress section "${section.id}".`;
+        console.error(`[course-progress] ${problem}`);
+        showSaveError(`Course activity setup error: ${problem}`);
+      }
+    });
 
     const mergeRanges = (ranges: RangePair[]) => {
       const clean = ranges.filter(([start, end]) => Number.isFinite(start) && Number.isFinite(end) && end > start).sort((a, b) => a[0] - b[0]);
@@ -442,7 +451,23 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
             const heading = document.createElement("h3");
             heading.textContent = "Still to do";
             const list = document.createElement("ul");
+            let previousSection = "";
             outstanding.forEach((milestone) => {
+              const section = sections.find((item) => item.milestoneIds.includes(milestone.id));
+              if (section && section.id !== previousSection) {
+                const sectionRow = document.createElement("li");
+                sectionRow.className = "course-progress__section-row";
+                const sectionLink = document.createElement(locked ? "span" : "a");
+                sectionLink.textContent = section.label;
+                if (sectionLink instanceof HTMLAnchorElement) {
+                  sectionLink.href = `${courseUrl(lesson.path)}#${encodeURIComponent(section.id)}`;
+                  sectionLink.dataset.checklistTarget = section.id;
+                  sectionLink.dataset.checklistPath = lesson.path;
+                }
+                sectionRow.append(sectionLink);
+                list.append(sectionRow);
+                previousSection = section.id;
+              }
               const row = document.createElement("li");
               const activity = document.createElement(locked ? "span" : "a");
               activity.textContent = milestone.label;
@@ -520,13 +545,15 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
       if (link.dataset.checklistPath !== currentPath) return;
       event.preventDefault();
       setPanelOpen(false, false);
+      history.replaceState(null, "", `#${encodeURIComponent(link.dataset.checklistTarget || "")}`);
       focusActivity(link.dataset.checklistTarget || "");
     });
 
     const focusLinkedActivity = () => {
       let targetId = "";
       try { targetId = decodeURIComponent(location.hash.slice(1)); } catch { return; }
-      if (requiredMilestones.some((milestone) => milestone.path === currentPath && milestone.targetId === targetId)) focusActivity(targetId);
+      if (requiredMilestones.some((milestone) => milestone.path === currentPath && milestone.targetId === targetId) ||
+        sections.some((section) => section.id === targetId && section.milestoneIds.some((id) => milestones.some((item) => item.id === id && item.path === currentPath)))) focusActivity(targetId);
     };
     if (document.readyState === "complete") window.requestAnimationFrame(focusLinkedActivity);
     else window.addEventListener("load", focusLinkedActivity, { once: true });
@@ -751,6 +778,9 @@ const runtimeConfig = { lessons: config.lessons, ...config.completion };
   :global(.course-progress__activity-group h3) { margin: 0 0 5px; color: #071827; font-size: var(--course-type-ui-size); font-weight: 700; line-height: var(--course-type-ui-line-height); }
   :global(.course-progress__activity-group ul), :global(.course-progress__completed-group ul) { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
   :global(.course-progress__activity-group li), :global(.course-progress__completed-group li) { margin: 0; font-size: var(--course-type-ui-size); line-height: var(--course-type-ui-line-height); }
+  :global(.course-progress__section-row) { padding-top: .55rem; font-weight: 700; }
+  :global(.course-progress__section-row:first-child) { padding-top: .15rem; }
+  :global(.course-progress__section-row + li) { padding-left: .75rem; }
   :global(.course-progress__activity-group a) { color: var(--course-accent-strong); text-decoration: underline; text-underline-offset: 2px; }
   :global(.course-progress__activity-group a:hover), :global(.course-progress__activity-group a:focus-visible) { color: var(--course-accent); outline-color: var(--focus-on-light); }
   :global(.course-progress__activity-group span) { color: #435261; }

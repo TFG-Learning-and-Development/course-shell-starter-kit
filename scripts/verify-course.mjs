@@ -71,7 +71,7 @@ try {
   await run(process.execPath, [astro, "build", "--outDir", fixtureDist], {
     cwd: process.cwd(), env: { ...process.env, COURSE_VERIFY_COMPONENTS: "1", PUBLIC_COURSE_VERIFY: "1" },
   });
-  for (const route of ["__verify-components", "__verify-completion", "__verify-large", "__verify-interactions", "__verify-bad-contract", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty", "__verify-nav", "__verify-nav/scenario/review"]) {
+  for (const route of ["__verify-components", "__verify-completion", "__verify-large", "__verify-interactions", "__verify-one-page", "__verify-bad-contract", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty", "__verify-nav", "__verify-nav/scenario/review"]) {
     assert(await exists(path.join(fixtureDist, route, "index.html")), `Missing ${route} fixture.`);
   }
   const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -157,8 +157,84 @@ try {
       await page.goto(`${origin}${lesson.path}`, { waitUntil: "networkidle" });
       assert((await page.locator("[data-course-path]").getAttribute("data-course-path")) === lesson.path, `Configured lesson did not render: ${lesson.path}`);
       assert(!(await page.locator("[data-access-pending]").count()), `Configured lesson remained locked: ${lesson.path}`);
+      await page.evaluate(() => {
+        document.documentElement.dataset.scormPackage = "true";
+        window.dispatchEvent(new Event("course-progress:request-state"));
+      });
+      const packagedLinks = await page.locator("a[data-lesson-path][href]").evaluateAll((links) => links.map((link) => new URL(link.href).pathname));
+      assert(packagedLinks.length > 0 && packagedLinks.every((href) => href.endsWith("/index.html")), `Configured lesson links are not explicit index.html routes: ${lesson.path}`);
     }
     await context.close();
+
+    const onePageUrl = `${origin}/__verify-one-page/`;
+    const onePageConfig = JSON.parse((await readFile(path.join(fixtureDist, "__verify-one-page", "index.html"), "utf8")).match(/<script\b[^>]*data-course-config[^>]*>([\s\S]*?)<\/script>/)?.[1] || "null");
+    assert(onePageConfig?.navigationMode === "sections" && onePageConfig.lessons.length === 1 && onePageConfig.navigationLessons.length === 3, "Single-page fixture configuration is incomplete");
+    for (const width of [320, 375, 768, 1280]) {
+      const singleContext = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
+      const single = await singleContext.newPage();
+      monitor(single, `single-page ${width}px`, origin);
+      await single.goto(onePageUrl, { waitUntil: "networkidle" });
+      assert(await single.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Single-page fixture overflows at ${width}px`);
+      await single.locator(".lessons-toggle").click();
+      assert((await single.locator(".course-links a[data-course-section]").count()) === onePageConfig.navigationLessons.length &&
+        !(await single.locator(".course-links a[data-lesson-path]").count()) &&
+        !(await single.locator(".lesson-navigation").count()), `Section menu or between-lesson controls did not follow One-scroll configuration at ${width}px`);
+      assert(await single.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Open section menu overflows at ${width}px`);
+      await single.locator('[data-course-section="fixture-quiz"]').focus();
+      await single.keyboard.press("Enter");
+      await single.waitForFunction(() => location.hash === "#fixture-quiz");
+      await single.waitForFunction(() => document.querySelector('[data-course-section="fixture-quiz"]')?.getAttribute("aria-current") === "location");
+      assert(await single.evaluate(() => {
+        const target = document.getElementById("fixture-quiz");
+        const header = document.querySelector(".site-header");
+        return Boolean(target && header && target.getBoundingClientRect().top >= header.getBoundingClientRect().height - 2);
+      }), `Keyboard Lessons anchor is obscured by the sticky header at ${width}px`);
+      await single.locator("[data-progress-trigger]").click();
+      assert((await single.locator("[data-progress-lesson]").count()) === 1 &&
+        (await single.locator(".course-progress__section-row").count()) >= 2 &&
+        (await single.locator("[data-progress-lessons]").textContent()).includes("Decision checks"), `Grouped Progress sections are missing at ${width}px`);
+      await single.locator('.course-progress__section-row [data-checklist-target="fixture-steps"]').click();
+      await single.waitForFunction(() => location.hash === "#fixture-steps" && document.activeElement?.closest("#fixture-steps") !== null);
+      await singleContext.close();
+    }
+
+    const singleLmsContext = await browser.newContext({ reducedMotion: "reduce" });
+    await installMockLms(singleLmsContext, lmsSeed());
+    const singleLms = await singleLmsContext.newPage();
+    monitor(singleLms, "single-page simulated LMS", origin);
+    await singleLms.goto(onePageUrl, { waitUntil: "networkidle" });
+    await singleLms.locator("#fixture-intro").scrollIntoViewIfNeeded();
+    await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(0));
+    await singleLms.locator("[data-progress-trigger]").click();
+    await singleLms.locator('[data-checklist-target="fixture-quiz-second"]').click();
+    assert(await singleLms.locator("#fixture-quiz-second").isVisible() &&
+      !JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(3), "Checklist navigation granted an attempt or failed to reveal a hidden question");
+    await singleLms.locator("#fixture-quiz-second input[type=radio]").first().check();
+    let singleMock = await lmsState(singleLms);
+    assert(JSON.parse(singleMock.values["cmi.suspend_data"]).c.includes(3) &&
+      (await singleLms.locator("#fixture-quiz-second [data-feedback-copy]").textContent()).includes("Incorrect response."), "Wrong but valid second answer did not earn immediate attempt credit and feedback");
+    await singleLms.locator("[data-question-prev]").click();
+    await singleLms.locator("#fixture-quiz-first input[type=radio]").last().check();
+    assert(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(2), "First question did not earn its independent attempt");
+    await singleLms.locator("#fixture-steps [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
+    await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("notice"));
+    assert(await singleLms.locator('#fixture-steps [data-step-id="act"]').isDisabled(), "Ordered steps exposed a later row too early");
+    await singleLms.locator("#fixture-steps [data-step-next]").click();
+    await singleLms.locator("#fixture-steps [data-step-next]").click();
+    singleMock = await lmsState(singleLms);
+    assert(JSON.stringify(JSON.parse(singleMock.values["cmi.suspend_data"]).e[1]) === JSON.stringify(["notice", "choose", "act"]) &&
+      singleMock.values["cmi.core.lesson_status"] === "completed" && singleMock.errors.length === 0, "Ordered exploration or all-required completion failed");
+    await singleLms.reload({ waitUntil: "networkidle" });
+    singleMock = await lmsState(singleLms);
+    const restoredSingle = { initialized: lmsCalls(singleMock, "LMSInitialize"), finished: lmsCalls(singleMock, "LMSFinish"),
+      checked: await singleLms.locator("#fixture-quiz-first input[type=radio]:checked").count(),
+      step: await singleLms.locator("#fixture-steps [data-step-count]").textContent(), errors: singleMock.errors };
+    assert(restoredSingle.initialized === restoredSingle.finished + 1 && restoredSingle.checked === 1 &&
+      restoredSingle.step === "Step 3 of 3" &&
+      (await singleLms.locator("#fixture-quiz-first [data-feedback-copy]").textContent()).includes("Incorrect response.") &&
+      singleMock.active && singleMock.values["cmi.core.lesson_status"] === "completed" &&
+      restoredSingle.errors.length === 0, `Single-page LMS refresh lost state or made invalid session calls: ${JSON.stringify(restoredSingle)}`);
+    await singleLmsContext.close();
 
     // These scenarios use a renamed, nested two-lesson fixture. Production
     // courses are checked above from their own configuration.
@@ -438,6 +514,10 @@ try {
     await components.locator("#gallery-knowledge-check input[type=radio]").first().check();
     assert(await components.locator("#gallery-knowledge-check [data-assessment-feedback]").isVisible(), "Knowledge-check feedback did not appear on selection");
     assert(!(await components.locator("#gallery-assessment input[type=radio]:checked").count()), "Independent assessment instance was changed");
+    await components.locator("#gallery-sequence-first input[type=radio]").last().check();
+    assert((await components.locator("#gallery-sequence-first [data-feedback-copy]").textContent()).includes("Incorrect response.") &&
+      !(await components.locator("#gallery-sequence-other-single input[type=radio]:checked").count()) &&
+      (await components.locator("#gallery-sequence-other [data-question-count]").textContent()) === "Question 1 of 1", "Repeated assessment sequences shared state or lost the one-question edge case");
     await components.locator("#gallery-explorer [data-category-choice=apply]").click();
     assert(await components.locator("#gallery-explorer [data-explorer-item=reflect]").isVisible() && (await components.locator("#gallery-explorer [data-item-choice=reflect]").getAttribute("aria-pressed")) === "true", "Explorer category and active item diverged");
     await components.close();
@@ -452,5 +532,5 @@ try {
     await badContract.close();
     assert(errors.length === 0, `Browser errors: ${errors.join("; ")}`);
   } finally { await browser.close(); await new Promise((resolve) => server.close(resolve)); }
-  console.log(`Course Chromium verification passed: responsive shell, typography, footer, ${builtConfig.lessons.length} configured routes, ${builtConfig.completion.milestones.length} milestones, immediate VIEW, unlocking variants, large state and capacity boundaries, interaction restore, and strict simulated LMS navigation, recovery, save failure and reflection privacy.`);
+  console.log(`Course Chromium verification passed: responsive shell, typography, footer, ${builtConfig.lessons.length} configured routes, ${builtConfig.completion.milestones.length} milestones, section and multi-page navigation, package-safe lesson links, compact steps, assessment sequence, immediate VIEW, unlocking variants, large state and capacity boundaries, interaction restore, and strict simulated LMS navigation, recovery, save failure and reflection privacy.`);
 } finally { await rm(fixtureDist, { recursive: true, force: true }); }

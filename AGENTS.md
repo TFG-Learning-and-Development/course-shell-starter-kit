@@ -2,6 +2,12 @@
 
 This repository is a reusable Astro course shell.
 
+## Course format comes from the storyboard
+
+- Read the storyboard's explicit course-format instruction **before** planning routes or building pages. Record the selected format in `courseConfig.navigationMode` and the build summary. Use the storyboard field `Course format: One-scroll / Multi-page`: `One-scroll` maps to `navigationMode: "sections"`; `Multi-page` maps to `navigationMode: "lessons"`.
+- Follow the declared format unless the user explicitly overrides it. Never infer format solely from course length, lesson count, a visual board, a duplicated source project or the shell's demonstration mode. A One-scroll course may contain several logical lessons, all on one continuous page; its Lessons menu links to section anchors and it has no lesson-to-lesson Proceed controls. A Multi-page course uses separate lesson pages, explicit packaged `index.html` links and configured sequential unlocking.
+- If the storyboard omits the format or conflicts with itself, check the supplied build brief and explicit user instructions. If they do not resolve it, ask one focused clarification **before format-dependent implementation**. When maintaining an existing course without a new format instruction, preserve its current format.
+
 - Keep Astro on the established `7.3.8` baseline unless the user explicitly requests another reviewed migration. The supported Node.js floor is `22.19.0`, matching the pinned dependency tree.
 - Reuse the existing Astro, Tailwind, layout, component and interaction foundation.
 - Build every course from its approved storyboard, mood board and supplied assets. The storyboard controls content, sequence and activity requirements; the mood board controls branding, imagery and course-specific composition.
@@ -17,6 +23,7 @@ This repository is a reusable Astro course shell.
 - Add course-specific assets under `public/assets/`, use descriptive alt text, and remove unused files after checking references.
 - Keep the default footer wording exactly `Return to People Connect to continue` for every course. It remains plain static text with no link, control, completion event or LMS action. Set the footer background through the course theme to follow the supplied mood board or design board, and maintain readable contrast; keep the Back to top control unchanged.
 - Keep the default header logo-only with an accessible home-link name and a distortion-free logo slot that accepts different aspect ratios. Put Lessons and Progress together at the padded right edge. Lessons opens a dark, internally scrolling overlay below its button, with configured lesson numbers starting at 00, titles, current-lesson highlighting, and lock explanations from the shared unlock state. Keep individual lesson links out of the header row. Preserve package-safe routes, keyboard focus, Escape and outside-click dismissal, and mutual dismissal with Progress on desktop and mobile.
+- Choose `navigationMode: "sections"` only for a single-page course with configured section anchors; use `"lessons"` or the default for multiple lesson routes. Keep section links, grouped Progress headings and milestone targets aligned. Preserve the explicit `index.html` helper for packaged multi-page links. Configure white or transparent logo artwork with `brand.logoTreatment` rather than filename checks.
 - Present Back to top as the established compact rounded capsule with its upward arrow, subtle border and shadow, restrained hover treatment, and visible keyboard focus. Preserve its footer position, anchor behaviour and reduced-motion handling.
 - On mobile, keep the footer in normal page flow and arrange its fixed message and Back to top capsule as a centred vertical column. Use a 16px gap, 24px block padding, 20px inline padding, a 144px minimum height that may grow, centred naturally wrapping message text, and a natural-width capsule with a 44px minimum touch height. Preserve the desktop footer row.
 - Run `npm ci`, `npm run build`, `npm run verify` and `npm audit` after dependency changes.
@@ -40,6 +47,7 @@ These instructions apply automatically to every course build and every new or ad
 - Support keyboard operation, semantic controls, accessible names and relationships, visible focus, readable contrast, reduced motion and generous touch targets. Stack or wrap layouts and contain necessary internal scrolling before labels or controls become cramped.
 - Use typed content/configuration props and unique instance IDs. Keep components independent of course branding, lesson or item counts, selectors for a specific course and storage identities. Multiple instances must operate independently.
 - Register only approved required milestones and use the existing tracking, persistence and restoration contracts. Empty rendering, hidden content, navigation and restoration must not invent an attempt. Visible initial exploration follows the approved component rules. Keep reflection privacy and LMS-attempt isolation intact.
+- Use `StepGroup` with `ordered` and `compactVertical` for an approved visible process when appropriate; letters and labels come from the supplied content. Use `AssessmentSequence` for an approved series of single-choice questions, with a distinct SUBMIT milestone per question. Selecting an answer shows its configured feedback and records a valid attempt; arrows and section links only navigate.
 
 #### Review before handover
 
