@@ -1,0 +1,47 @@
+---
+import CoursePage from "../../src/components/CoursePage.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+import type { CompletionMilestone } from "../../src/data/course-completion";
+
+const mode = Astro.url.pathname.includes("sections") ? "sections" : "lessons";
+const ids = ["visible", "visible-override", "hidden-attr", "ancestor-hidden", "display-none", "ancestor-display", "visibility-hidden", "ancestor-visibility", "visibility-collapse", "opacity-zero", "ancestor-opacity", "content-hidden", "ancestor-content", "offscreen"];
+const milestones: CompletionMilestone[] = ids.map((id) => ({ id: `view-${id}`, label: id, type: "view", targetId: `view-${id}`, path: "/", required: true }));
+const config: CourseConfig = {
+  identity: { id: `view-visibility-${mode}`, title: "VIEW visibility fixture", description: "" },
+  brand: { homeLabel: "Fixture home" },
+  theme: defaultCourseTheme,
+  lessons: [{ id: "entry", path: "/", label: "Entry" }],
+  navigationMode: mode,
+  ...(mode === "sections" ? { navigationLessons: [{ id: "view", title: "VIEW examples", targetId: "view-visible" }] } : {}),
+  completion: { storageKey: `astro-course-progress:view-visibility-${mode}:v1`, sequentialUnlocking: false, milestones },
+  package: { identifier: `view-visibility-${mode}-scorm-12`, filename: `View-Visibility-${mode}.zip`, launchFile: "index.html", title: "VIEW visibility fixture" },
+};
+validateCourseConfig(config);
+---
+
+<CoursePage lessonId="entry" {config}>
+  <div class="view-fixture-stage">
+    <section class="view-fixture-target" style="left: 2%" id="view-visible" data-completion-id="view-visible">Visible</section>
+    <div style="visibility: hidden"><section class="view-fixture-target view-fixture-target--lower" style="left: 22%; visibility: visible" id="view-visible-override" data-completion-id="view-visible-override">Visible override</section></div>
+    <section class="view-fixture-target" style="left: 12%" id="view-hidden-attr" data-completion-id="view-hidden-attr" hidden>Hidden attribute</section>
+    <div hidden><section class="view-fixture-target" style="left: 22%" id="view-ancestor-hidden" data-completion-id="view-ancestor-hidden">Hidden ancestor</section></div>
+    <section class="view-fixture-target" style="left: 32%; display: none" id="view-display-none" data-completion-id="view-display-none">Display none</section>
+    <div style="display: none"><section class="view-fixture-target" style="left: 42%" id="view-ancestor-display" data-completion-id="view-ancestor-display">Display ancestor</section></div>
+    <section class="view-fixture-target" style="left: 52%; visibility: hidden" id="view-visibility-hidden" data-completion-id="view-visibility-hidden">Visibility hidden</section>
+    <div class="view-fixture-hidden"><section class="view-fixture-target" style="left: 62%" id="view-ancestor-visibility" data-completion-id="view-ancestor-visibility">Visibility ancestor</section></div>
+    <section class="view-fixture-target view-fixture-target--lower" style="left: 2%; visibility: collapse" id="view-visibility-collapse" data-completion-id="view-visibility-collapse">Visibility collapse</section>
+    <section class="view-fixture-target" style="left: 72%; opacity: 0; transition: opacity 120ms linear" id="view-opacity-zero" data-completion-id="view-opacity-zero">Opacity zero</section>
+    <div style="opacity: 0"><section class="view-fixture-target" style="left: 82%" id="view-ancestor-opacity" data-completion-id="view-ancestor-opacity">Opacity ancestor</section></div>
+    <section class="view-fixture-target" style="left: 92%; content-visibility: hidden" id="view-content-hidden" data-completion-id="view-content-hidden">Content hidden</section>
+    <div style="content-visibility: hidden"><section class="view-fixture-target view-fixture-target--lower" style="left: 12%" id="view-ancestor-content" data-completion-id="view-ancestor-content">Content ancestor</section></div>
+    <section class="view-fixture-target view-fixture-target--offscreen" style="left: 2%" id="view-offscreen" data-completion-id="view-offscreen">Offscreen</section>
+  </div>
+</CoursePage>
+
+<style>
+  .view-fixture-stage { position: relative; min-height: 1600px; }
+  .view-fixture-hidden { visibility: hidden; }
+  .view-fixture-target { position: absolute; top: 360px; width: 8%; min-height: 80px; padding: 4px; background: white; color: black; }
+  .view-fixture-target--lower { top: 430px; }
+  .view-fixture-target--offscreen { top: 1200px; }
+</style>

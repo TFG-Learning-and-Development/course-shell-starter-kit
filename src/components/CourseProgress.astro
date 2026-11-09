@@ -683,19 +683,54 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
     });
 
     if ("IntersectionObserver" in window) {
+      const viewTargets = milestones.filter((milestone) => milestone.type === "view").map((milestone) => targetFor(milestone)).filter((target): target is HTMLElement => target instanceof HTMLElement);
+      const intersectingTargets = new Set<HTMLElement>();
+      const visiblyRendered = (target: HTMLElement) => {
+        if (!target.isConnected) return false;
+        // Visibility inherits but a descendant may explicitly restore it; the other hiding styles cannot be overridden by a child.
+        const targetVisibility = getComputedStyle(target).visibility;
+        if (targetVisibility === "hidden" || targetVisibility === "collapse") return false;
+        for (let node: HTMLElement | null = target; node; node = node.parentElement) {
+          if (node.hasAttribute("hidden")) return false;
+          const style = getComputedStyle(node);
+          if (style.display === "none" || style.contentVisibility === "hidden" || Number(style.opacity) === 0) return false;
+        }
+        return true;
+      };
+      const creditVisibleView = (target: HTMLElement) => {
+        const id = target.dataset.completionId;
+        if (id && !completed.has(id) && intersectingTargets.has(target) && document.visibilityState === "visible" && visiblyRendered(target)) markComplete(id);
+      };
       const viewObserver = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
-          const id = (entry.target as HTMLElement).dataset.completionId;
-          if (!id || completed.has(id)) return;
-          if (entry.isIntersecting && document.visibilityState === "visible") markComplete(id);
+          const target = entry.target as HTMLElement;
+          if (entry.isIntersecting) { intersectingTargets.add(target); creditVisibleView(target); }
+          else intersectingTargets.delete(target);
         });
       }, { rootMargin: "-38% 0px -38% 0px", threshold: 0 });
-      milestones.filter((milestone) => milestone.type === "view").forEach((milestone) => {
-        const target = targetFor(milestone);
-        if (target) viewObserver.observe(target);
+      viewTargets.forEach((target) => viewObserver.observe(target));
+      const visibilityObserver = new MutationObserver((changes) => {
+        intersectingTargets.forEach((target) => {
+          if (changes.some((change) => (change.target as Element).contains(target))) creditVisibleView(target);
+        });
       });
+      const watchedAncestors = new Set<Element>();
+      viewTargets.forEach((target) => {
+        for (let node: Element | null = target; node; node = node.parentElement) {
+          if (watchedAncestors.has(node)) continue;
+          watchedAncestors.add(node);
+          visibilityObserver.observe(node, { attributes: true, attributeFilter: ["hidden", "style", "class"] });
+        }
+      });
+      const checkAfterTransition = (event: Event) => {
+        if (!(event.target instanceof Element)) return;
+        intersectingTargets.forEach((target) => { if ((event.target as Element).contains(target)) creditVisibleView(target); });
+      };
+      document.addEventListener("transitionend", checkAfterTransition);
+      document.addEventListener("transitioncancel", checkAfterTransition);
+      document.addEventListener("animationend", checkAfterTransition);
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") milestones.filter((milestone) => milestone.type === "view").forEach((milestone) => { const target = targetFor(milestone); if (target) { viewObserver.unobserve(target); viewObserver.observe(target); } });
+        if (document.visibilityState === "visible") viewTargets.forEach((target) => { creditVisibleView(target); viewObserver.unobserve(target); viewObserver.observe(target); });
       });
     }
 

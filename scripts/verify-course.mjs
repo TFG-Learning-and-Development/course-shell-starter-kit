@@ -71,7 +71,7 @@ try {
   await run(process.execPath, [astro, "build", "--outDir", fixtureDist], {
     cwd: process.cwd(), env: { ...process.env, COURSE_VERIFY_COMPONENTS: "1", PUBLIC_COURSE_VERIFY: "1" },
   });
-  for (const route of ["__verify-components", "__verify-completion", "__verify-large", "__verify-interactions", "__verify-one-page", "__verify-bad-contract", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty", "__verify-nav", "__verify-nav/scenario/review"]) {
+  for (const route of ["__verify-components", "__verify-completion", "__verify-large", "__verify-interactions", "__verify-one-page", "__verify-view-lessons", "__verify-view-sections", "__verify-bad-contract", "__verify-routes", "__verify-routes-unlocked", "__verify-routes-empty", "__verify-nav", "__verify-nav/scenario/review"]) {
     assert(await exists(path.join(fixtureDist, route, "index.html")), `Missing ${route} fixture.`);
   }
   const mime = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -451,6 +451,55 @@ try {
     assert((await paths()).length === 4 && (await routes.locator("[data-progress-percent]").textContent()) === "0%", "Empty requirements locked or completed a course");
     await routes.close();
 
+    for (const mode of ["lessons", "sections"]) {
+      const viewPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      monitor(viewPage, `VIEW visibility ${mode}`, origin);
+      await viewPage.goto(`${origin}/__verify-view-${mode}/`, { waitUntil: "networkidle" });
+      const viewKey = `astro-course-progress:view-visibility-${mode}:v1`;
+      assert(await viewPage.locator("[data-course-config]").evaluate((node) => JSON.parse(node.textContent).navigationMode) === mode, `VIEW fixture did not use ${mode} navigation`);
+      assert((await viewPage.locator(`.course-links a[${mode === "sections" ? "data-course-section" : "data-lesson-path"}]`).count()) === 1, `VIEW fixture Lessons menu did not use ${mode} navigation`);
+      await waitCompleted(viewPage, "view-visible", viewKey, 500);
+      await waitCompleted(viewPage, "view-visible-override", viewKey, 500);
+      const viewState = () => viewPage.evaluate((key) => JSON.parse(localStorage.getItem(key) || "{}"), viewKey);
+      const hiddenIds = ["hidden-attr", "ancestor-hidden", "display-none", "ancestor-display", "visibility-hidden", "ancestor-visibility", "visibility-collapse", "opacity-zero", "ancestor-opacity", "content-hidden", "ancestor-content", "offscreen"];
+      const initiallyEarned = (await viewState()).completed || [];
+      assert(hiddenIds.every((id) => !initiallyEarned.includes(`view-${id}`)), `Hidden or offscreen VIEW completed before reveal in ${mode} mode`);
+      const initialScroll = await viewPage.evaluate(() => scrollY);
+      for (const id of hiddenIds.slice(0, -1)) {
+        await viewPage.locator(`#view-${id}`).evaluate((node, kind) => {
+          if (kind === "hidden-attr") node.hidden = false;
+          else if (kind === "ancestor-hidden") node.parentElement.hidden = false;
+          else if (kind === "display-none") node.style.display = "block";
+          else if (kind === "ancestor-display") node.parentElement.style.display = "block";
+          else if (kind === "visibility-hidden") node.style.visibility = "visible";
+          else if (kind === "ancestor-visibility") node.parentElement.classList.remove("view-fixture-hidden");
+          else if (kind === "visibility-collapse") node.style.visibility = "visible";
+          else if (kind === "opacity-zero") node.style.opacity = "1";
+          else if (kind === "ancestor-opacity") node.parentElement.style.opacity = "1";
+          else if (kind === "content-hidden") node.style.contentVisibility = "visible";
+          else if (kind === "ancestor-content") node.parentElement.style.contentVisibility = "visible";
+        }, id);
+        await waitCompleted(viewPage, `view-${id}`, viewKey, 700);
+        assert(await viewPage.evaluate(() => scrollY) === initialScroll, `VIEW ${id} required a scroll after reveal`);
+      }
+      const completedBeforeRepeat = (await viewState()).completed;
+      assert(hiddenIds.slice(0, -1).every((id) => completedBeforeRepeat.filter((earned) => earned === `view-${id}`).length === 1), `VIEW credit was duplicated in ${mode} mode`);
+      await viewPage.evaluate(() => {
+        window.__viewCreditEvents = 0;
+        window.addEventListener("course-progress:state", () => { window.__viewCreditEvents += 1; });
+        const target = document.getElementById("view-opacity-zero");
+        target.style.opacity = "0";
+        target.style.opacity = "1";
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      await viewPage.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert(await viewPage.evaluate(() => window.__viewCreditEvents) === 0, `Completed VIEW was credited again in ${mode} mode`);
+      assert(!(await viewState()).completed.includes("view-offscreen"), `Offscreen VIEW completed in ${mode} mode`);
+      await viewPage.locator("#view-offscreen").evaluate((node) => node.scrollIntoView({ block: "center" }));
+      await waitCompleted(viewPage, "view-offscreen", viewKey, 500);
+      await viewPage.close();
+    }
+
     const fixture = await browser.newPage();
     monitor(fixture, "completion fixture", origin);
     await fixture.goto(`${origin}/__verify-completion/`, { waitUntil: "networkidle" });
@@ -550,5 +599,5 @@ try {
     await badContract.close();
     assert(errors.length === 0, `Browser errors: ${errors.join("; ")}`);
   } finally { await browser.close(); await new Promise((resolve) => server.close(resolve)); }
-  console.log(`Course Chromium verification passed: responsive shell, typography, footer, ${builtConfig.lessons.length} configured routes, ${builtConfig.completion.milestones.length} milestones, section and multi-page navigation, package-safe lesson links, compact steps, assessment sequence, immediate VIEW, unlocking variants, large state and capacity boundaries, interaction restore, and strict simulated LMS navigation, recovery, save failure and reflection privacy.`);
+  console.log(`Course Chromium verification passed: responsive shell, typography, footer, ${builtConfig.lessons.length} configured routes, ${builtConfig.completion.milestones.length} milestones, section and multi-page navigation, package-safe lesson links, compact steps, assessment sequence, immediate VIEW and hidden/revealed VIEW states, unlocking variants, large state and capacity boundaries, interaction restore, and strict simulated LMS navigation, recovery, save failure and reflection privacy.`);
 } finally { await rm(fixtureDist, { recursive: true, force: true }); }
