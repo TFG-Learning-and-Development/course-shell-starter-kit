@@ -8,6 +8,18 @@ import QuoteBlock from "../../src/components/typography/QuoteBlock.astro";
 import StatisticBlock from "../../src/components/typography/StatisticBlock.astro";
 import TextLayout from "../../src/components/typography/TextLayout.astro";
 import TypeText from "../../src/components/typography/TypeText.astro";
+import CourseCarousel from "../../src/components/CourseCarousel.astro";
+import EditorialSplit from "../../src/components/EditorialSplit.astro";
+import PortraitQuote from "../../src/components/PortraitQuote.astro";
+import RevealGroup from "../../src/components/RevealGroup.astro";
+import GalleryExample from "./GalleryExample.astro";
+import PremiumAssessment from "../../src/components/PremiumAssessment.astro";
+import AssessmentSequence from "../../src/components/AssessmentSequence.astro";
+import FlipCards from "../../src/components/FlipCards.astro";
+import MatchingActivity from "../../src/components/MatchingActivity.astro";
+import StepGroup from "../../src/components/StepGroup.astro";
+import ItemExplorer from "../../src/components/ItemExplorer.astro";
+import ReflectionActivity from "../../src/components/ReflectionActivity.astro";
 import "../../src/styles/global.css";
 
 const columns = [
@@ -34,10 +46,14 @@ const rows = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Component verification fixture</title>
+    <title>Development component gallery</title>
   </head>
   <body>
     <main class="verification-fixture container">
+      <header class="gallery-intro">
+        <h1>Shared component gallery</h1>
+        <p>Development preview of real course components with neutral content. Choices and responses exist only in this page session; they never reach course progress or an LMS.</p>
+      </header>
       <SectionHeading title="Centred heading" intro="Short representative content." />
       <SectionHeading title="Left-aligned heading" align="left" />
 
@@ -61,8 +77,66 @@ const rows = [
         ]}
       />
 
+      <section class="verification-premium" aria-labelledby="premium-fixture-heading">
+        <h2 id="premium-fixture-heading">Premium layout patterns</h2>
+        <GalleryExample name="EditorialSplit" purpose="Pair explanatory text with a prominent image." properties="title, paragraphs, media, reverse, tone, completionId" completion="Optional VIEW milestone on the visible section when configured." usage="src/components/EditorialSplit.astro">
+          <EditorialSplit title="Editorial split" paragraphs={["A development-only example with neutral local artwork."]} media={{ src: "/assets/demo/editorial-landscape.svg", alt: "Abstract landscape" }} />
+        </GalleryExample>
+        <GalleryExample name="PortraitQuote" purpose="Place a portrait and quotation beside supporting text." properties="title, paragraphs, portrait, quote, citation, completionId" completion="Optional VIEW milestone on the visible section when configured." usage="src/components/PortraitQuote.astro">
+          <PortraitQuote title="Portrait and quote" portrait={{ src: "/assets/demo/portrait-neutral.svg", alt: "Neutral illustrated learner" }} quote="A useful quote can create editorial rhythm without becoming decoration." citation="Example voice" />
+        </GalleryExample>
+        <GalleryExample name="RevealGroup" purpose="Let learners open short supporting details." properties="id, title, intro, items with unique child IDs" completion="EXPLORE only when every configured required child is opened." usage="src/components/RevealGroup.astro">
+          <RevealGroup id="gallery-reveals" title="Reveal group" items={[{ id: "one", title: "First reveal", body: "First detail." }, { id: "two", title: "Second reveal", body: "Second detail." }]} />
+        </GalleryExample>
+        <GalleryExample name="CourseCarousel" purpose="Present a short image and text sequence." properties="id, label, items, tracked" completion="Optional EXPLORE when tracked; every slide must be approved as required." usage="src/components/CourseCarousel.astro">
+          <CourseCarousel id="gallery-carousel" label="Neutral carousel example" items={[{ id: "one", title: "Plan", body: "Start with the approved brief.", media: { src: "/assets/demo/item-plan.svg", alt: "Planning board illustration" } }, { id: "two", title: "Reflect", body: "Connect the idea to practice.", media: { src: "/assets/demo/item-reflect.svg", alt: "Reflection illustration" } }]} />
+        </GalleryExample>
+      </section>
+
+      <section class="verification-premium" aria-labelledby="interaction-fixture-heading">
+        <h2 id="interaction-fixture-heading">Interaction patterns</h2>
+        <GalleryExample name="PremiumAssessment · assessment" purpose="Practise one decision and see immediate feedback." properties="id, title, instruction, question prompt/options/correctIndex/feedback" completion="An intentional answer selection is a valid SUBMIT attempt, including an incorrect choice." usage="src/components/PremiumAssessment.astro">
+          <PremiumAssessment id="gallery-assessment" title="Choose the useful next action" instruction="Select one response to see feedback." question={{ prompt: "A learner needs to compare two ideas. What should the activity invite them to do?", options: ["Compare the ideas against a clear criterion", "Open an unrelated image", "Wait for a timer"], correctIndex: 0, correctFeedback: "A criterion makes the comparison meaningful.", incorrectFeedback: "Choose the action that supports the comparison." }} />
+        </GalleryExample>
+        <GalleryExample name="PremiumAssessment · knowledge check" purpose="Check understanding with the same reusable single-choice pattern." properties="id, title, instruction, question prompt/options/correctIndex/feedback" completion="An intentional answer selection is a valid SUBMIT attempt; restoration does not create another attempt." usage="src/components/PremiumAssessment.astro">
+          <PremiumAssessment id="gallery-knowledge-check" title="Check the principle" instruction="Select one response to see feedback." question={{ prompt: "Which statement describes useful feedback?", options: ["It explains the next useful step", "It only repeats the selected option"], correctIndex: 0, correctFeedback: "The next step helps learners act on the result.", incorrectFeedback: "Think about what the learner can do after reading feedback." }} />
+        </GalleryExample>
+        <GalleryExample name="AssessmentSequence" purpose="Present a short series of decisions one question at a time." properties="id, title, intro, instruction, questions with unique IDs and feedback, optional shuffleOptions" completion="Each question has its own SUBMIT target; an intentional selection records a valid attempt. Arrows only navigate." usage="src/components/AssessmentSequence.astro">
+          <AssessmentSequence id="gallery-sequence" title="Check two decisions" intro="Choose an answer, then move to the next question." questions={[{ id: "first", title: "First decision", prompt: "What should guide the component choice?", options: ["The learning goal", "The number of patterns available"], correctIndex: 0, correctFeedback: "The goal guides the choice.", incorrectFeedback: "Choose the pattern that serves the goal." }, { id: "second", title: "Second decision", prompt: "What makes feedback useful?", options: ["A relevant next step", "An unrelated fact"], correctIndex: 0, correctFeedback: "A next step helps learners act.", incorrectFeedback: "Feedback should help the learner act." }]} />
+        </GalleryExample>
+        <GalleryExample name="AssessmentSequence · second instance" purpose="Show that repeated sequences keep their choices separate." properties="a distinct instance ID and its own question IDs" completion="A separate SUBMIT target would be registered for this question in a course." usage="src/components/AssessmentSequence.astro">
+          <AssessmentSequence id="gallery-sequence-other" title="A separate check" questions={[{ id: "single", title: "Check one decision", prompt: "What should a section heading do?", options: ["State the topic clearly", "Hide the topic"], correctIndex: 0, correctFeedback: "A clear heading orients the learner.", incorrectFeedback: "The heading should make the topic clear." }]} />
+        </GalleryExample>
+        <GalleryExample name="FlipCards" purpose="Reveal two sides of a short idea." properties="id, title, intro, cards with unique child IDs and front/back copy" completion="EXPLORE only after every required card is opened." usage="src/components/FlipCards.astro">
+          <FlipCards id="gallery-flip-cards" title="Explore the ideas" cards={[{ id: "observe", title: "Observe", front: "Notice what is happening.", back: "Use what you notice to frame a useful question." }, { id: "respond", title: "Respond", front: "Choose a relevant action.", back: "Explain why that action fits the situation." }]} />
+        </GalleryExample>
+        <GalleryExample name="MatchingActivity" purpose="Match each prompt to a relevant option and review feedback." properties="id, title, intro, prompts, options, result labels" completion="A complete submitted matching attempt is a valid SUBMIT attempt." usage="src/components/MatchingActivity.astro">
+          <MatchingActivity id="gallery-matching" title="Match the format" prompts={[{ id: "compare", prompt: "Compare options", answerId: "table" }, { id: "sequence", prompt: "Follow a short process", answerId: "steps" }]} options={[{ id: "steps", label: "Step group" }, { id: "table", label: "Comparison table" }]} />
+        </GalleryExample>
+        <GalleryExample name="StepGroup" purpose="Walk through a short ordered process with tabs and controls." properties="id, title, intro, steps with unique child IDs" completion="EXPLORE only after every required step is selected." usage="src/components/StepGroup.astro">
+          <StepGroup id="gallery-steps" title="A short process" steps={[{ id: "notice", title: "Notice", body: "Identify the useful fact." }, { id: "choose", title: "Choose", body: "Select an action that fits." }]} />
+        </GalleryExample>
+        <GalleryExample name="StepGroup · compact vertical" purpose="Keep an ordered process visible beside its explanation." properties="ordered, compactVertical, optional panelImage, and step ID/letter/title/body" completion="Each visible step earns its EXPLORE child; labels and optional letters come from content." usage="src/components/StepGroup.astro">
+          <StepGroup id="gallery-compact-steps" title="Move through the process" ordered compactVertical panelImage="/assets/demo/editorial-landscape.svg" steps={[{ id: "orient", letter: "O", title: "Orient", body: "Read the approved brief." }, { id: "choose", letter: "C", title: "Choose a relevant action", body: "Select the pattern that fits." }, { id: "review", letter: "R", title: "Review", body: "Check the outcome and revise." }]} />
+        </GalleryExample>
+        <GalleryExample name="ItemExplorer" purpose="Browse categories, item details and local image galleries." properties="id, title, intro, categories, items with images/details" completion="EXPLORE only after every required item is selected; image changes are separate." usage="src/components/ItemExplorer.astro">
+          <ItemExplorer id="gallery-explorer" title="Explore the resources" categories={[{ id: "prepare", label: "Prepare" }, { id: "apply", label: "Apply" }]} items={[{ id: "plan", categoryId: "prepare", title: "Plan", summary: "Set a clear purpose.", images: [{ src: "/assets/demo/item-plan.svg", alt: "Illustrated planning board" }, { src: "/assets/demo/editorial-landscape.svg", alt: "Abstract landscape" }], details: [{ label: "Use", text: "Shape a short learning sequence." }] }, { id: "reflect", categoryId: "apply", title: "Reflect", summary: "Connect an idea to practice.", images: [{ src: "/assets/demo/item-reflect.svg", alt: "Illustrated reflection symbol" }], details: [{ label: "Use", text: "Consider an action after learning." }] }]} />
+        </GalleryExample>
+        <GalleryExample name="ReflectionActivity" purpose="Write and save a brief response." properties="id, title, prompt, instruction, minimumLength, buttonLabel" completion="A valid save emits COMPLETE. This preview uses in-memory storage only." usage="src/components/ReflectionActivity.astro">
+          <ReflectionActivity id="gallery-reflection" title="Reflect on the example" prompt="Which pattern would support a short comparison?" instruction="This preview response stays in memory and clears when the page reloads." storageMode="memory" />
+        </GalleryExample>
+      </section>
+
       <section class="verification-typography" aria-labelledby="typography-fixture-heading">
         <h2 id="typography-fixture-heading">Typography primitives</h2>
+        <div class="gallery-type-notes"><p><strong>Purpose:</strong> Keep headings, prose, quotations, statistics and definitions on the shared type scale. <strong>Editable properties:</strong> semantic element, role, layout, spacing, tone, variant and content. <strong>Completion:</strong> none by default; add a VIEW milestone to an approved visible section only. <strong>Use:</strong> <code>src/components/typography/</code> and <code>docs/typography.md</code>.</p></div>
+        <ul class="gallery-type-catalog">
+          <li><strong>TypeText</strong> — semantic text and type roles; edit <code>as</code>, <code>role</code>, <code>weight</code>, <code>tone</code> and copy. No automatic completion. See <code>src/components/typography/TypeText.astro</code>.</li>
+          <li><strong>TextLayout</strong> — readable content grids; edit <code>layout</code>, <code>spacing</code>, <code>surface</code> and slots. No automatic completion. See <code>src/components/typography/TextLayout.astro</code>.</li>
+          <li><strong>QuoteBlock</strong> — editorial quotation; edit <code>quote</code>, <code>citation</code>, <code>family</code> and <code>variant</code>. No automatic completion. See <code>src/components/typography/QuoteBlock.astro</code>.</li>
+          <li><strong>StatisticBlock</strong> — highlighted value with context; edit <code>value</code>, <code>label</code>, <code>detail</code> and <code>surface</code>. No automatic completion. See <code>src/components/typography/StatisticBlock.astro</code>.</li>
+          <li><strong>DefinitionList</strong> — term and definition pairs; edit <code>items</code> and <code>variant</code>. No automatic completion. See <code>src/components/typography/DefinitionList.astro</code>.</li>
+        </ul>
 
         <div class="verification-native-headings" aria-label="Native heading hierarchy">
           <h1>Native heading level one</h1>
@@ -117,6 +191,37 @@ const rows = [
   </body>
 </html>
 
+<script>
+  import { provideCourseState } from "../../src/lib/course-state";
+
+  // This fixture deliberately has no CourseProgress, LMS bridge or persistent store.
+  const ui = new Map<string, unknown>();
+  const explored = new Map<string, Set<string>>();
+  provideCourseState({
+    mode: "standalone",
+    learnerId: null,
+    get: <T,>(key: string, fallback: T): T => (ui.has(key) ? ui.get(key) as T : fallback),
+    set: (key: string, value: unknown) => { ui.set(key, value); },
+    explored: (activityId: string) => [...(explored.get(activityId) || [])],
+    completed: () => false,
+  });
+  window.addEventListener("course-progress:explore", ((event: CustomEvent<{ activityId: string; itemId: string }>) => {
+    const { activityId, itemId } = event.detail;
+    if (!activityId?.startsWith("gallery-") || !itemId) return;
+    const items = explored.get(activityId) || new Set<string>();
+    items.add(itemId);
+    explored.set(activityId, items);
+    window.dispatchEvent(new CustomEvent("course-progress:explore-state", { detail: { activityId, itemIds: [...items] } }));
+  }) as EventListener);
+  window.addEventListener("course-progress:request-restore", ((event: CustomEvent<{ activityId: string; apply?: (itemIds: string[]) => void }>) => {
+    const { activityId, apply } = event.detail;
+    if (!activityId?.startsWith("gallery-")) return;
+    const itemIds = [...(explored.get(activityId) || [])];
+    apply?.(itemIds);
+    window.dispatchEvent(new CustomEvent("course-progress:explore-state", { detail: { activityId, itemIds } }));
+  }) as EventListener);
+</script>
+
 <style is:global>
   body.verification-course-override {
     --course-type-body-size: 1.25rem;
@@ -132,4 +237,13 @@ const rows = [
   .verification-native-headings { display: grid; gap: 0.75rem; }
   .verification-native-headings > * { margin-bottom: 0; }
   .verification-local-override { --course-type-heading-md-size: 2rem; }
+  .verification-premium { display: grid; gap: 2rem; }
+  .verification-premium > .premium-section { padding-block: 2rem; }
+  .gallery-intro { max-width: var(--course-type-measure-standard); }
+  .gallery-intro h1 { margin-bottom: var(--course-space-heading-copy); }
+  .gallery-type-notes { padding: var(--course-space-card); background: var(--surface-soft); border-radius: var(--course-radius-card); }
+  .gallery-type-notes p { margin: 0; }
+  .gallery-type-notes code { overflow-wrap: anywhere; }
+  .gallery-type-catalog { display: grid; gap: .65rem; margin: 0; padding-left: 1.4rem; }
+  .gallery-type-catalog code { overflow-wrap: anywhere; }
 </style>

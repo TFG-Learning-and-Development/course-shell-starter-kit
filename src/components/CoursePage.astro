@@ -1,0 +1,128 @@
+---
+import CourseProgress from "./CourseProgress.astro";
+import LessonNavigation from "./LessonNavigation.astro";
+import { courseConfig, type CourseConfig } from "../data/course-config";
+import { courseData } from "../data/course";
+import CourseLayout from "../layouts/CourseLayout.astro";
+
+interface Props { lessonId: string; config?: CourseConfig }
+const { lessonId, config = courseConfig } = Astro.props as Props;
+const index = config.lessons.findIndex((lesson) => lesson.id === lessonId);
+if (index < 0) throw new Error(`Unknown lesson: ${lessonId}`);
+const current = config.lessons[index];
+const previous = config.lessons[index - 1];
+const next = config.lessons[index + 1];
+const sectionNavigation = config.navigationMode === "sections";
+const serializedConfig = JSON.stringify(config).replaceAll("<", "\\u003c");
+---
+
+<CourseLayout title={config.identity.title} description={config.identity.description} theme={config.theme}>
+  <div class="course-page" id="top" data-course-path={current.path} data-access-pending>
+    <header class="site-header">
+      <nav class="course-nav container" aria-label="Course lessons">
+        <a class="brand-link" href="/" aria-label={config.brand.homeLabel} data-lesson-path="/">
+          <span class:list={["brand-mark", { "brand-mark--transparent": config.brand.logoTreatment === "transparent" }]} aria-hidden="true">
+            {config.brand.logoSrc ? <img src={config.brand.logoSrc} alt={config.brand.logoAlt || "Course logo"} /> : "CS"}
+          </span>
+        </a>
+        <div class="nav-actions">
+          <div class="lessons-menu">
+            <button class="lessons-toggle" type="button" aria-expanded="false" aria-controls="course-links">
+              Lessons
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 6 5 5 5-5" /></svg>
+            </button>
+            <div class="course-links" id="course-links" hidden>
+              <h2 class="course-links__heading">Course lessons</h2>
+              {sectionNavigation ? config.navigationLessons?.map((lesson, lessonIndex) => (
+                <a href={`#${lesson.targetId}`} data-course-section={lesson.targetId} aria-current={lessonIndex === 0 ? "location" : undefined}>
+                  <span class="course-links__number" aria-hidden="true">{String(lessonIndex).padStart(2, "0")}</span>
+                  <span class="course-links__body"><span>{lesson.title}</span></span>
+                </a>
+              )) : config.lessons.map((lesson, lessonIndex) => (
+                <a href={lesson.path} data-lesson-path={lesson.path} data-lesson-index={lessonIndex} aria-current={lesson.id === current.id ? "page" : undefined}>
+                  <span class="course-links__number" aria-hidden="true">{String(lessonIndex).padStart(2, "0")}</span>
+                  <span class="course-links__body"><span>{lesson.label}</span><small data-lock-reason hidden></small></span>
+                  <span class="course-links__lock" data-lock-icon hidden aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+          <CourseProgress {config} />
+        </div>
+      </nav>
+    </header>
+    <p class="course-access-notice container" data-access-notice role="status" hidden></p>
+    <main id="main-content"><slot /></main>
+    {!sectionNavigation && config.lessons.length > 1 && <LessonNavigation previous={previous} next={next} />}
+    <footer class="course-footer">
+      <div class="container footer-inner">
+        <p>{courseData.footer.text}</p>
+        <a href="#top"><span>Back to top</span><span aria-hidden="true">&uarr;</span></a>
+      </div>
+    </footer>
+  </div>
+  <script type="application/json" data-course-config set:html={serializedConfig}></script>
+  <script>
+    import { courseUrl } from "../lib/course-url";
+    const toggle = document.querySelector<HTMLButtonElement>(".lessons-toggle");
+    const links = document.querySelector<HTMLElement>(".course-links");
+    const close = () => {
+      toggle?.setAttribute("aria-expanded", "false");
+      if (links) links.hidden = true;
+    };
+    toggle?.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") !== "true";
+      if (open) window.dispatchEvent(new Event("course-progress:close-panel"));
+      toggle.setAttribute("aria-expanded", String(open));
+      if (links) links.hidden = !open;
+    });
+    links?.addEventListener("click", (event) => { if ((event.target as Element).closest("a")) close(); });
+    window.addEventListener("course-progress:panel-open", close);
+    document.addEventListener("pointerdown", (event) => {
+      if (toggle?.getAttribute("aria-expanded") === "true" && !(event.target as Element).closest(".lessons-menu")) close();
+    });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && toggle?.getAttribute("aria-expanded") === "true") { close(); toggle.focus(); } });
+    const sectionLinks = [...document.querySelectorAll<HTMLAnchorElement>(".course-links a[data-course-section]")];
+    if (sectionLinks.length) {
+      let scheduled = false;
+      const updateCurrentSection = () => {
+        scheduled = false;
+        const threshold = scrollY + (document.querySelector(".site-header")?.getBoundingClientRect().height || 0) + 48;
+        const current = sectionLinks.reduce((chosen, link) => {
+          const target = document.getElementById(link.dataset.courseSection || "");
+          return target && target.getBoundingClientRect().top + scrollY <= threshold ? link : chosen;
+        }, sectionLinks[0]);
+        sectionLinks.forEach((link) => link === current ? link.setAttribute("aria-current", "location") : link.removeAttribute("aria-current"));
+      };
+      const scheduleCurrentSection = () => { if (!scheduled) { scheduled = true; requestAnimationFrame(updateCurrentSection); } };
+      addEventListener("scroll", scheduleCurrentSection, { passive: true });
+      addEventListener("resize", scheduleCurrentSection);
+      scheduleCurrentSection();
+    }
+    const update = (detail: { unlockedPaths: string[]; completedIds: string[]; milestones: { id: string; path: string; required: boolean }[] }) => {
+      const unlocked = new Set(detail.unlockedPaths);
+      const completed = new Set(detail.completedIds);
+      const blockingIndex = Array.from(document.querySelectorAll<HTMLAnchorElement>(".course-links a[data-lesson-path]")).findIndex((link) =>
+        detail.milestones.some((milestone) => milestone.required && milestone.path === link.dataset.lessonPath && !completed.has(milestone.id))
+      );
+      document.querySelectorAll<HTMLAnchorElement>("a[data-lesson-path]").forEach((link) => {
+        const path = link.dataset.lessonPath || "/";
+        const locked = !unlocked.has(path);
+        link.dataset.locked = String(locked);
+        if (locked) { link.removeAttribute("href"); link.setAttribute("aria-disabled", "true"); link.tabIndex = 0; }
+        else { link.href = courseUrl(path); link.removeAttribute("aria-disabled"); link.removeAttribute("tabindex"); }
+        const reason = link.querySelector<HTMLElement>("[data-lock-reason]");
+        const icon = link.querySelector<HTMLElement>("[data-lock-icon]");
+        if (reason) {
+          reason.hidden = !locked;
+          if (locked) reason.textContent = `Complete lesson ${String(Math.max(0, blockingIndex)).padStart(2, "0")} to 100% before continuing.`;
+        }
+        if (icon) icon.hidden = !locked;
+      });
+    };
+    window.addEventListener("course-progress:state", ((event: CustomEvent<Parameters<typeof update>[0]>) => update(event.detail)) as EventListener);
+    window.dispatchEvent(new Event("course-progress:request-state"));
+  </script>
+</CourseLayout>

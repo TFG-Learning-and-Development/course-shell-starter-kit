@@ -1,0 +1,11 @@
+---
+import type { EditorialMedia, PremiumTone } from "./premium-types";
+interface Props { id?: string; title: string; paragraphs: readonly string[]; media: EditorialMedia; reverse?: boolean; tone?: PremiumTone; completionId?: string }
+const { id, title, paragraphs, media, reverse = false, tone = "light", completionId } = Astro.props as Props;
+---
+<section id={id} class:list={["premium-section", tone === "soft" && "premium-section--soft", tone === "dark" && "premium-section--dark"]} data-completion-id={completionId}>
+  <div class:list={["container editorial-split", reverse && "editorial-split--reverse"]}>
+    <div class="editorial-split__copy"><h2>{title}</h2>{paragraphs.map((paragraph) => <p>{paragraph}</p>)}</div>
+    <figure class="editorial-split__media"><img src={media.src} alt={media.alt} style={`object-position:${media.position || "center"}`} width="1200" height="800" loading="lazy" decoding="async" /></figure>
+  </div>
+</section>

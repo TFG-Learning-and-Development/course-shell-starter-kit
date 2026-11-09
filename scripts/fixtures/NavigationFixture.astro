@@ -1,0 +1,25 @@
+---
+import CourseProgress from "../../src/components/CourseProgress.astro";
+import ReflectionActivity from "../../src/components/ReflectionActivity.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+import "../../src/styles/global.css";
+
+const config: CourseConfig = {
+  identity: { id: "navigation-fixture", title: "Navigation fixture", description: "" },
+  brand: { homeLabel: "Fixture home" }, theme: defaultCourseTheme,
+  lessons: [{ id: "entry", path: "/", label: "Entry" }, { id: "scenario", path: "/scenario/review/", label: "Scenario review" }],
+  completion: { storageKey: "astro-course-progress:navigation-fixture:v1", sequentialUnlocking: true, milestones: [
+    { id: "fixture-entry", label: "Read entry", type: "view", targetId: "fixture-entry", path: "/", required: true },
+    { id: "fixture-response", label: "Save response", type: "complete", targetId: "fixture-response", path: "/scenario/review/", required: true },
+  ] },
+  package: { identifier: "navigation-fixture-scorm-12", filename: "Navigation-Fixture.zip", launchFile: "index.html", title: "Navigation fixture" },
+};
+validateCourseConfig(config);
+const second = Astro.url.pathname.includes("/scenario/review/");
+---
+<!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>Navigation fixture</title></head><body><div id="top" data-course-path={second ? "/scenario/review/" : "/"}><CourseProgress {config} /><main>
+  {second ? <ReflectionActivity id="fixture-response" title="A short response" prompt="Write a valid response" minimumLength={4} courseKey={config.completion.storageKey} /> : <section id="fixture-entry" data-completion-id="fixture-entry"><h1>Entry</h1><p>Open the scenario after reading this section.</p></section>}
+  <nav aria-label="Fixture lessons"><a href={second ? "../../" : "./scenario/review/"} data-fixture-lesson-link>{second ? "Entry" : "Scenario review"}</a></nav>
+  <a href="#top" data-fixture-top>Back to top</a>
+</main></div></body></html>
+<style is:global>#fixture-entry { min-height: 100vh; padding: 2rem; }</style>

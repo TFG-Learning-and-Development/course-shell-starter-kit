@@ -1,0 +1,72 @@
+---
+import type { ExplorerCategory, ExplorerItem } from "./premium-types";
+interface Props { id: string; title: string; intro?: string; categories?: readonly ExplorerCategory[]; items: readonly ExplorerItem[] }
+const { id, title, intro, categories = [], items } = Astro.props as Props;
+---
+<section class="premium-section" id={id} data-completion-id={id} data-required-items={JSON.stringify(items.map((item) => item.id))} data-item-explorer aria-labelledby={`${id}-heading`}>
+  <div class="container"><div class="premium-section__intro"><h2 id={`${id}-heading`}>{title}</h2>{intro && <p>{intro}</p>}<p data-explorer-status aria-live="polite">0 of {items.length} items explored</p></div><div class="item-explorer">
+    {categories.length > 0 && <div class="item-explorer__choices" role="group" aria-label={`${title} categories`}>{categories.map((category, index) => <button type="button" data-category-choice={category.id} aria-pressed={index === 0 ? "true" : "false"}>{category.label}</button>)}</div>}
+    <div class="item-explorer__choices" aria-label={`${title} items`}>{items.map((item, index) => <button type="button" data-item-choice={item.id} data-item-category={item.categoryId} aria-pressed={index === 0 ? "true" : "false"}>{item.title}</button>)}</div>
+    {items.map((item, itemIndex) => <article class="item-explorer__item" data-explorer-item={item.id} hidden={itemIndex !== 0}><div class="item-explorer__gallery"><img data-explorer-image src={item.images[0]?.src} alt={item.images[0]?.alt} width="800" height="600" /><div class="item-explorer__thumbs">{item.images.map((image, imageIndex) => <button type="button" data-image-src={image.src} data-image-alt={image.alt} aria-pressed={imageIndex === 0 ? "true" : "false"} aria-label={`Show image ${imageIndex + 1} of ${item.title}`}><img src={image.src} alt="" width="80" height="80" loading="lazy" /></button>)}</div></div><div class="item-explorer__details"><h3>{item.title}</h3><p>{item.summary}</p><dl>{item.details.map((detail) => <div><dt>{detail.label}</dt><dd>{detail.text}</dd></div>)}</dl></div></article>)}
+  </div></div>
+</section>
+<script>
+  import { courseStateReady } from "../lib/course-state";
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-item-explorer]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+    const choices = [...root.querySelectorAll<HTMLButtonElement>("[data-item-choice]")];
+    const categories = [...root.querySelectorAll<HTMLButtonElement>("[data-category-choice]")];
+    const items = [...root.querySelectorAll<HTMLElement>("[data-explorer-item]")];
+    const status = root.querySelector<HTMLElement>("[data-explorer-status]");
+    const visited = new Set(courseState.explored(root.id));
+    const renderStatus = () => { if (status) status.textContent = `${visited.size} of ${items.length} items explored`; };
+    const belongsTo = (choice: HTMLButtonElement, categoryId: string) => !choice.dataset.itemCategory || choice.dataset.itemCategory === categoryId;
+    const renderSelection = (categoryId: string, itemId: string, record = false) => {
+      categories.forEach((category) => category.setAttribute("aria-pressed", String(category.dataset.categoryChoice === categoryId)));
+      choices.forEach((choice) => {
+        choice.hidden = Boolean(categories.length && !belongsTo(choice, categoryId));
+        choice.setAttribute("aria-pressed", String(choice.dataset.itemChoice === itemId));
+      });
+      items.forEach((item) => { item.hidden = item.dataset.explorerItem !== itemId; });
+      if (record) {
+        courseState.set(`${root.id}:selection`, { categoryId, itemId });
+        window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId } }));
+      }
+    };
+    const saved = courseState.get<{ categoryId?: string; itemId?: string } | null>(`${root.id}:selection`, null);
+    const savedItem = saved?.itemId || courseState.get<string>(`${root.id}:active`, "");
+    const selected = choices.find((choice) => choice.dataset.itemChoice === savedItem) || choices[0];
+    const savedCategory = saved?.categoryId || courseState.get<string>(`${root.id}:category`, "");
+    const categoryId = categories.some((category) => category.dataset.categoryChoice === selected?.dataset.itemCategory)
+      ? selected!.dataset.itemCategory! : categories.some((category) => category.dataset.categoryChoice === savedCategory)
+        ? savedCategory : categories[0]?.dataset.categoryChoice || "";
+    if (selected?.dataset.itemChoice) renderSelection(categoryId, selected.dataset.itemChoice);
+    choices.forEach((choice) => choice.addEventListener("click", () => {
+      if (!choice.dataset.itemChoice) return;
+      const currentCategory = categories.find((category) => category.getAttribute("aria-pressed") === "true")?.dataset.categoryChoice || "";
+      renderSelection(currentCategory, choice.dataset.itemChoice, true);
+    }));
+    categories.forEach((category) => category.addEventListener("click", () => {
+      const nextCategory = category.dataset.categoryChoice || "";
+      const activeChoice = choices.find((choice) => choice.getAttribute("aria-pressed") === "true" && belongsTo(choice, nextCategory));
+      const nextChoice = activeChoice || choices.find((choice) => belongsTo(choice, nextCategory));
+      if (nextChoice?.dataset.itemChoice) renderSelection(nextCategory, nextChoice.dataset.itemChoice, true);
+    }));
+    items.forEach((item) => {
+      const image = item.querySelector<HTMLImageElement>("[data-explorer-image]");
+      item.querySelectorAll<HTMLButtonElement>("[data-image-src]").forEach((button) => button.addEventListener("click", () => {
+        if (!image || !button.dataset.imageSrc) return;
+        image.src = button.dataset.imageSrc;
+        image.alt = button.dataset.imageAlt || "";
+        item.querySelectorAll<HTMLButtonElement>("[data-image-src]").forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
+      }));
+    });
+    window.addEventListener("course-progress:explore-state", ((event: CustomEvent<{ activityId: string; itemIds: string[] }>) => {
+      if (event.detail.activityId !== root.id) return;
+      event.detail.itemIds.forEach((item) => visited.add(item));
+      renderStatus();
+    }) as EventListener);
+    renderStatus();
+  }));
+</script>
