@@ -8,7 +8,13 @@ This repository is the reusable neutral shell. The default production example is
 2. Run `npm ci`, then `npx playwright install chromium` if browser verification is needed.
 3. Run `npm run build` and `npm run verify`. These commands build and test the shell; they do **not** create a SCORM ZIP. Run `npm run dev` to inspect pages locally at `http://localhost:4321/`.
 
-Use `npm run package:scorm` only when a separate package build is requested.
+## Select the build stage
+
+Explicit user instructions select the stage; default to **Preview**. In Preview, build and run relevant verification without packaging hooks, inspect the rendered course and report remaining issues. Record SCORM packaging as `Not run — Preview stage`.
+
+In **Review**, compare the rendered course against its storyboard and mood board. Check content, responsive layout, accessibility, interactions, progress and resume; fix issues and rerun affected checks. Record human visual/content approval separately from automated results, and record SCORM packaging as `Not run — Review stage`.
+
+Enter **Release preparation** only when the user explicitly requests packaging, a release candidate or release preparation. A request for packaged LMS testing also enters this stage. Build the latest approved source, run `npm run package:scorm` and `npm run verify:scorm`, then record the source commit or working-tree state represented by the ZIP. Separate simulated LMS results from outstanding live Oracle acceptance. Packaging does not authorise publishing, LMS upload or merging. Learner-facing edits after packaging make the ZIP stale until rebuilt.
 
 ## Check both course formats
 

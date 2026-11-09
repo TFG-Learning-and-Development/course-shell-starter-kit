@@ -2,6 +2,14 @@
 
 This repository is a reusable Astro course shell.
 
+## Build stages
+
+Explicit user instructions determine the stage; default to **Preview** when no stage is stated.
+
+- **Preview:** Build or refine approved content, branding, interactions and completion configuration. Run the production build and relevant verification without packaging hooks, inspect the rendered course and report remaining issues. Do not generate or verify a SCORM ZIP. Report packaging as `Not run — Preview stage`.
+- **Review:** Compare the rendered course with its storyboard and mood board. Check content coverage, responsive layout, accessibility, interactions, progress and resume; fix issues and rerun affected checks. Distinguish automated results from human visual/content approval. Do not generate or verify a ZIP unless the user explicitly requests packaged LMS testing; that request enters Release preparation.
+- **Release:** Enter only on an explicit request for packaging, a release candidate or release preparation. Build the latest approved source, package it and run package verification. Report the source commit or working-tree state represented by the ZIP, separate simulated LMS results from live Oracle acceptance and list outstanding live checks. Packaging does not authorise publishing, LMS upload or merging. Learner-facing source changes make the package stale until rebuilt.
+
 ## Course format comes from the storyboard
 
 - Read the storyboard's explicit course-format instruction **before** planning routes or building pages. Record the selected format in `courseConfig.navigationMode` and the build summary. Use the storyboard field `Course format: One-scroll / Multi-page`: `One-scroll` maps to `navigationMode: "sections"`; `Multi-page` maps to `navigationMode: "lessons"`.
@@ -19,7 +27,7 @@ This repository is a reusable Astro course shell.
 - Give every course, activity, DOM target, package and storage key a unique, course-specific identity.
 - Preserve responsive navigation, keyboard access, visible focus states, the skip link and reduced-motion support.
 - Keep the starter independent of credentials, analytics, deployment accounts and external runtime services. The SCORM 1.2 bridge uses only the API supplied by the LMS launch window.
-- The reusable SCORM 1.2 package reports requirements-based completion. Never complete on launch, tab hiding, navigation or exit. Confirm and configure each course's required milestones before release; preserve completed and passed LMS status.
+- The reusable SCORM 1.2 package reports requirements-based completion. Launch, tab hiding, navigation and exit grant no credit by themselves; a destination VIEW section may earn credit once genuinely visible. Confirm and configure each course's required milestones before release; preserve completed and passed LMS status.
 - Add course-specific assets under `public/assets/`, use descriptive alt text, and remove unused files after checking references.
 - Keep the default footer wording exactly `Return to People Connect to continue` for every course. It remains plain static text with no link, control, completion event or LMS action. Set the footer background through the course theme to follow the supplied mood board or design board, and maintain readable contrast; keep the Back to top control unchanged.
 - Keep the default header logo-only with an accessible home-link name and a distortion-free logo slot that accepts different aspect ratios. Put Lessons and Progress together at the padded right edge. Lessons opens a dark, internally scrolling overlay below its button, with configured lesson numbers starting at 00, titles, current-lesson highlighting, and lock explanations from the shared unlock state. Keep individual lesson links out of the header row. Preserve package-safe routes, keyboard focus, Escape and outside-click dismissal, and mutual dismissal with Progress on desktop and mobile.
@@ -83,12 +91,12 @@ These instructions apply automatically to every course build and every new or ad
 - Theme every course's progress UI through the shared `--course-accent` token so it inherits the supplied visual-board accent automatically. Do not hard-code a separate progress colour; keep the unfilled track neutral and verify readable contrast.
 - Replace the starter milestones with course-specific requirements derived from the storyboard and the content actually implemented.
 - Connect required content, videos and interactions to the existing VIEW, WATCH, attempt-based SUBMIT or COMPLETE, and EXPLORE triggers as appropriate.
-- Preserve the approved tracking rules and defaults: ordinary VIEW content completes immediately on visible viewport entry, WATCH uses unique-range thresholds, SUBMIT and COMPLETE remain attempt-based, EXPLORE requires its children, and milestones retain equal weighting, persistence and restoration. Hidden content never earns VIEW credit. Keep learner-facing Reset Progress absent; activity-level Retry/Clear controls may remain.
+- Preserve the approved tracking rules and defaults: ordinary VIEW content completes immediately on entry into the central viewport zone while the document is visible, with no dwell timer or 900 ms delay. Offscreen, hidden and collapsed content earns no VIEW credit; navigation alone grants none. WATCH uses unique-range thresholds, SUBMIT and COMPLETE remain attempt-based, EXPLORE requires its children, and milestones retain equal weighting, persistence and restoration. Keep learner-facing Reset Progress absent; activity-level Retry/Clear controls may remain.
+- Until the VIEW observer also checks visual hiding styles, conceal unearned VIEW targets with the `hidden` attribute or `display: none`; CSS `visibility: hidden` or `opacity: 0` alone can still intersect the viewport zone. Flag this known gap during course review.
 - Exclude optional resources, navigation, footer copy and Back to top from required completion.
 - Validate unique lesson routes, milestone and target IDs, exploration children, working triggers, a course-specific versioned storage key, browser persistence, LMS suspend/resume and isolation from stale standalone progress. A lesson with no required activities passes through sequential unlocking; an entirely empty requirement set never reports LMS completion.
 - Store reflection text only in private browser storage scoped to a known learner, or in memory for the current page when the approved requirement is merely a valid response. Never put learner text in LMS suspend data. Require durable text storage only when the storyboard explicitly calls for it, and explain unavailable storage to the learner.
 
-### Handover readiness
+### Stage-specific handover
 
-- Include typography and completion-tracking checks in every documented build handover, alongside `npm run build`, `npm run verify`, `npm run package:scorm` and `npm run verify:scorm` results.
-- Distinguish standalone browser tracking from the packaged SCORM 1.2 LMS bridge. Extracted-ZIP checks use a simulated LMS; live People Connect import, launch, resume and reporting still require separate acceptance testing.
+- Report the selected stage, source state, typography and completion-tracking checks, visual review performed and remaining issues. In Preview and Review, report SCORM packaging as `Not run — Preview stage` or `Not run — Review stage` respectively. Only Release reports package and extracted-ZIP verification results. Distinguish standalone browser checks, simulated LMS checks and live Oracle/People Connect acceptance.

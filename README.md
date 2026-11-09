@@ -21,10 +21,10 @@ npx playwright install chromium
 npm run dev
 npm run build
 npm run verify
-npm run package:scorm
-npm run verify:scorm
 npm run preview
 ```
+
+Package commands are reserved for an explicitly requested Release preparation stage: `npm run package:scorm` and `npm run verify:scorm`.
 
 Confirm `node --version` is at least `22.19.0` before setup, then use `npm ci` for a clean, lockfile-exact install. On a fresh Linux CI image, Playwright may also require `npx playwright install --with-deps chromium`. Do not replace the lockfile with a lockfile from another package manager.
 
@@ -93,7 +93,7 @@ The Overview/hero gradient must inherit `--course-accent-strong` and `--course-a
 
 The footer uses `--course-accent` as its background, so update that token from the supplied mood board or design board and confirm the fixed white footer text remains readable. The Activity progress bar and related accent states must use the same shared token for every course; do not add a separate progress colour. Keep the unfilled track neutral and contrast-check the filled state against it.
 
-After editing content, run `npm run build`, `npm run verify`, `npm run package:scorm` and `npm run verify:scorm`. The browser verifier creates and removes a temporary fixture build, exercises responsive widths, lesson navigation, shared components and progress restoration. The extracted-ZIP verifier tests a simulated LMS from a strict nested path.
+After editing content, run `npm run build` and relevant verification such as `npm run verify`, then inspect the rendered course. The browser verifier creates and removes a temporary fixture build, exercising responsive widths, lesson navigation, shared components and progress restoration without packaging. See [Build stages](#build-stages) before creating a ZIP.
 
 ## Mandatory completion workflow
 
@@ -101,9 +101,17 @@ Completion tracking is part of every course build; it does not require a separat
 
 Optional resources, navigation, the fixed footer message and Back to top must not contribute to required completion. Validate unique lesson routes, milestone and target IDs, exploration children, working triggers, the course-specific versioned storage key, browser restoration and LMS suspend/resume. A lesson with no requirements passes through sequential unlocking; an entirely empty requirement set never completes the LMS. See [`docs/completion-tracking.md`](docs/completion-tracking.md) for the exact contracts.
 
-## Build handover requirements
+## Build stages
 
-Every handover must report `npm run build`, `npm run verify`, `npm run package:scorm` and `npm run verify:scorm`, including typography and completion-tracking checks. Standalone use saves browser progress; packaged use reports requirements-based completion through an LMS-provided SCORM 1.2 API. The ZIP verifier simulates an LMS; live People Connect import, launch, resume and reporting remain separate acceptance work.
+Explicit user instructions select the stage; otherwise use **Preview**. Report the stage, source state, checks run, typography and completion tracking, visual inspection and remaining issues.
+
+| Stage | Work and handover | SCORM package |
+| --- | --- | --- |
+| Preview | Build approved content, branding, interactions and completion configuration; run the production build and relevant verification; inspect the rendered course and report issues. | `Not run — Preview stage` |
+| Review | Compare the rendered course with its storyboard and mood board; check content, responsive layout, accessibility, interactions, progress and resume; fix issues and rerun affected checks. Separate automated results from human visual/content approval. | `Not run — Review stage`, unless packaged LMS testing is explicitly requested, which enters Release preparation. |
+| Release | Only on an explicit request for packaging, a release candidate or release preparation: build the latest approved source, run `npm run package:scorm` and `npm run verify:scorm`, and identify the source commit or working-tree state in the ZIP report. | Report simulated LMS results and outstanding live Oracle/People Connect import, launch, resume and reporting checks. Learner-facing source edits after packaging make the ZIP stale until rebuilt. |
+
+Packaging does not authorise publishing, LMS upload or merging. Standalone use saves browser progress; a packaged launch uses the LMS-provided SCORM 1.2 API.
 
 ## Hosting assumptions
 
