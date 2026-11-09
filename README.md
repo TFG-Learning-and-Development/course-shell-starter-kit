@@ -70,7 +70,7 @@ At mobile widths, the footer uses the standard centred vertical layout: a natura
 
 See [`docs/components.md`](docs/components.md) and [`docs/typography.md`](docs/typography.md) before composing new sections, and [`docs/course-assets.md`](docs/course-assets.md) before adding media.
 
-For manager clone-and-test steps, see [`docs/manager-testing.md`](docs/manager-testing.md).
+For local setup and course testing, see [`docs/testing.md`](docs/testing.md).
 
 ### Typography
 

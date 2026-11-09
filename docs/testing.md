@@ -1,4 +1,4 @@
-# Manager testing guide
+# Testing guide
 
 This repository is the reusable neutral shell. The default production example is Multi-page; the One-scroll example is a development-only verification fixture. Test a real course against its approved storyboard and configured requirements before release.
 
@@ -8,7 +8,7 @@ This repository is the reusable neutral shell. The default production example is
 2. Run `npm ci`, then `npx playwright install chromium` if browser verification is needed.
 3. Run `npm run build` and `npm run verify`. These commands build and test the shell; they do **not** create a SCORM ZIP. Run `npm run dev` to inspect pages locally at `http://localhost:4321/`.
 
-Do not use `npm run package:scorm` for this review unless a separate package build is requested.
+Use `npm run package:scorm` only when a separate package build is requested.
 
 ## Check both course formats
 
