@@ -34,7 +34,7 @@ export const courseConfig: CourseConfig = {
   lessons: courseData.lessons.map((lesson) => ({ ...lesson })),
   navigationMode: "lessons",
   completion: { ...completionSettings, milestones: completionMilestones },
-  package: { identifier: "course-shell-scorm-12", filename: "Course-Shell-SCORM-1.2.zip", launchFile: "index.html", title: courseData.meta.title },
+  package: { identifier: "course-shell-scorm-12", filename: "Course-Shell-SCORM-1.2.zip", launchFile: "index.html", title: "Content" },
 };
 
 export function validateCourseConfig(config: CourseConfig): void {

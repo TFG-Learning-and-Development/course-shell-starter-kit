@@ -203,13 +203,14 @@ try {
         window.dispatchEvent(new Event("course-progress:request-state"));
       });
       const packagedLinks = await page.locator("a[data-lesson-path][href]").evaluateAll((links) => links.map((link) => new URL(link.href).pathname));
-      assert(packagedLinks.length > 0 && packagedLinks.every((href) => href.endsWith("/index.html")), `Configured lesson links are not explicit index.html routes: ${lesson.path}`);
+      assert(packagedLinks.length > 0 && packagedLinks.every((href) => href.endsWith("/overview.html") || href.endsWith("/index.html")) &&
+        packagedLinks.some((href) => href.endsWith("/overview.html")), `Configured lesson links are not explicit learner documents: ${lesson.path}`);
     }
     await context.close();
 
     const onePageUrl = `${origin}/__verify-one-page/`;
     const onePageConfig = JSON.parse((await readFile(path.join(fixtureDist, "__verify-one-page", "index.html"), "utf8")).match(/<script\b[^>]*data-course-config[^>]*>([\s\S]*?)<\/script>/)?.[1] || "null");
-    assert(onePageConfig?.navigationMode === "sections" && onePageConfig.lessons.length === 1 && onePageConfig.navigationLessons.length === 3, "Single-page fixture configuration is incomplete");
+    assert(onePageConfig?.navigationMode === "sections" && onePageConfig.lessons.length === 1 && onePageConfig.navigationLessons.length === 4, "Single-page fixture configuration is incomplete");
     for (const width of [320, 375, 640, 768, 1280]) {
       const singleContext = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: width === 640 ? 2 : 1, reducedMotion: "reduce" });
       const single = await singleContext.newPage();
@@ -239,18 +240,18 @@ try {
       assert((await single.locator("[data-progress-lesson]").count()) === 1 &&
         (await single.locator(".course-progress__section-row").count()) >= 2 &&
         (await single.locator("[data-progress-lessons]").textContent()).includes("Check the decisions"), `Grouped Progress sections are missing at ${width}px`);
-      assert(sameNames(await progressNames(single), ["Choose a useful learning pattern", "Explore a short process", "Choose the first action", "Choose the next action"]), `One-scroll Progress activity titles changed at ${width}px`);
+      assert(sameNames(await progressNames(single), ["Choose a useful learning pattern", "Explore a short process", "Choose the first action", "Choose the next action", "Explore the choices"]), `One-scroll Progress activity titles changed at ${width}px`);
       assert((await single.locator(".course-progress__section-row").allTextContents()).includes("Explore a short process"), `Legitimate Explore section title was stripped at ${width}px`);
       await single.locator('.course-progress__section-row [data-checklist-target="fixture-steps"]').click();
       await single.waitForFunction(() => location.hash === "#fixture-steps" && document.activeElement?.closest("#fixture-steps") !== null);
       await singleContext.close();
     }
     const onePageProgress = await fixtureConfig("__verify-one-page");
-    const onePageNames = ["Choose a useful learning pattern", "Explore a short process", "Choose the first action", "Choose the next action"];
+    const onePageNames = ["Choose a useful learning pattern", "Explore a short process", "Choose the first action", "Choose the next action", "Explore the choices"];
     for (const width of [320, 1280]) {
       for (const phase of ["partial", "complete"]) {
         const completed = phase === "partial" ? ["fixture-intro"] : onePageProgress.completion.milestones.map((item) => item.id);
-        const saved = { completed, watchRanges: {}, watchDurations: {}, explored: phase === "complete" ? { "fixture-steps": ["notice", "choose", "act"] } : {}, ui: {} };
+        const saved = { completed, watchRanges: {}, watchDurations: {}, explored: phase === "complete" ? { "fixture-steps": ["notice", "choose", "act"], "fixture-tabs": ["alpha", "beta"] } : {}, ui: {} };
         const labelContext = await browser.newContext({ viewport: { width, height: 900 } });
         await labelContext.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: onePageProgress.completion.storageKey, value: saved });
         const labelPage = await labelContext.newPage();
@@ -301,6 +302,10 @@ try {
     await singleLms.locator("[data-question-prev]").click();
     await singleLms.locator("#fixture-quiz-first input[type=radio]").last().check();
     assert(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(2), "First question did not earn its independent attempt");
+    await singleLms.locator("#fixture-tabs [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
+    await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[4]?.includes("alpha"));
+    await singleLms.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
+    await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[4]?.includes("beta"));
     await singleLms.locator('#fixture-steps [data-step-id="notice"]').click();
     await singleLms.locator("#fixture-steps [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("notice"));

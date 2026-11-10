@@ -27,6 +27,7 @@ const verificationFixture = {
         injectRoute({ pattern: '/__verify-large', entrypoint: new URL('./scripts/fixtures/LargeStateFixture.astro', import.meta.url), prerender: true });
         injectRoute({ pattern: '/__verify-interactions', entrypoint: new URL('./scripts/fixtures/InteractionStateFixture.astro', import.meta.url), prerender: true });
         injectRoute({ pattern: '/__verify-one-page', entrypoint: new URL('./scripts/fixtures/SinglePageFixture.astro', import.meta.url), prerender: true });
+        injectRoute({ pattern: '/__verify-empty-page', entrypoint: new URL('./scripts/fixtures/EmptyPageFixture.astro', import.meta.url), prerender: true });
         for (const pattern of ['/__verify-view-lessons', '/__verify-view-sections']) {
           injectRoute({ pattern, entrypoint: new URL('./scripts/fixtures/ViewVisibilityFixture.astro', import.meta.url), prerender: true });
         }
