@@ -628,6 +628,7 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
       try { requiredItems = target ? JSON.parse(target.dataset.requiredItems || "[]") : []; } catch { console.error(`[course-progress] Invalid required-item data for "${activityId}".`); }
       if (!requiredItems.includes(itemId)) return;
       const previousItems = state.explored[activityId] || [];
+      if (previousItems.includes(itemId)) return;
       const itemIds = new Set(previousItems);
       itemIds.add(itemId);
       state.explored[activityId] = Array.from(itemIds);

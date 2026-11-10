@@ -20,6 +20,7 @@ const config: CourseConfig = {
     { id: "fixture-assessment", label: "Decision", type: "submit", targetId: "fixture-assessment", path: "/", required: true },
     { id: "fixture-knowledge", label: "Knowledge check", type: "submit", targetId: "fixture-knowledge", path: "/", required: true },
     { id: "fixture-flips", label: "Cards", type: "explore", targetId: "fixture-flips", path: "/", required: true, requiredItems: ["front", "back"] },
+    { id: "fixture-tabs-other", label: "Other tabs", type: "explore", targetId: "fixture-tabs-other", path: "/", required: true, requiredItems: ["alpha", "beta"] },
   ] },
   package: { identifier: "interaction-fixture-scorm-12", filename: "Interaction-Fixture.zip", launchFile: "index.html", title: "Interaction state fixture" },
 };
@@ -33,4 +34,5 @@ validateCourseConfig(config);
   <FlipCards id="fixture-flips" title="Cards" cards={[{ id: "front", title: "Front", front: "First card.", back: "First detail." }, { id: "back", title: "Back", front: "Second card.", back: "Second detail." }]} />
   <PremiumAssessment id="fixture-assessment" title="Choose an action" instruction="Select one response to see feedback." question={{ prompt: "Which action fits the goal?", options: ["Compare against a criterion", "Wait for a timer"], correctIndex: 0, correctFeedback: "A criterion helps.", incorrectFeedback: "A timer does not help." }} />
   <PremiumAssessment id="fixture-knowledge" title="Check understanding" instruction="Select one response to see feedback." question={{ prompt: "What makes feedback useful?", options: ["A next step", "An unrelated detail"], correctIndex: 0, correctFeedback: "A next step helps.", incorrectFeedback: "Choose a useful next step." }} />
+  <div id="fixture-nested-tabs"><ExploreGroup id="fixture-tabs-other" title="Other tabs" variant="tabs" items={[{ id: "alpha", title: "Alpha", body: "Other first tab." }, { id: "beta", title: "Beta", body: "Other second tab." }]} /></div>
 </main></div></body></html>

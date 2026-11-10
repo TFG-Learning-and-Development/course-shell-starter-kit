@@ -2,6 +2,8 @@
 
 This repository is the reusable neutral shell. The default production example is Multi-page; the One-scroll example is a development-only verification fixture. Test a real course against its approved storyboard and configured requirements before release.
 
+`npm run verify` exercises active-panel exploration in the interaction, One-scroll and Multi-page fixtures: initial viewport entry without a click, offscreen and ancestor-hidden panels, reveal without scrolling, later selection, completion, refresh, duplicate events and independent activity IDs. Verify a real course's approved item IDs and nested reveal composition in the browser as well.
+
 ## Prepare a local copy
 
 1. Clone the confirmed repository and check out the branch named in the handover. Use Node.js `>=22.19.0` and npm `>=9.6.5`.

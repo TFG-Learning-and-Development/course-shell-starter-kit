@@ -12,12 +12,14 @@ const { id, title, intro, categories = [], items } = Astro.props as Props;
 </section>
 <script>
   import { courseStateReady } from "../lib/course-state";
+  import { watchVisiblePanelExploration } from "../lib/visible-panel-exploration";
   courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-item-explorer]").forEach((root) => {
     if (root.dataset.ready === "true") return;
     root.dataset.ready = "true";
     const choices = [...root.querySelectorAll<HTMLButtonElement>("[data-item-choice]")];
     const categories = [...root.querySelectorAll<HTMLButtonElement>("[data-category-choice]")];
     const items = [...root.querySelectorAll<HTMLElement>("[data-explorer-item]")];
+    const checkVisible = watchVisiblePanelExploration({ root, panels: items, activePanel: () => items.find((item) => !item.hidden), itemId: (item) => item.dataset.explorerItem, courseState });
     const belongsTo = (choice: HTMLButtonElement, categoryId: string) => !choice.dataset.itemCategory || choice.dataset.itemCategory === categoryId;
     const renderSelection = (categoryId: string, itemId: string, record = false) => {
       categories.forEach((category) => category.setAttribute("aria-pressed", String(category.dataset.categoryChoice === categoryId)));
@@ -28,8 +30,8 @@ const { id, title, intro, categories = [], items } = Astro.props as Props;
       items.forEach((item) => { item.hidden = item.dataset.explorerItem !== itemId; });
       if (record) {
         courseState.set(`${root.id}:selection`, { categoryId, itemId });
-        window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId } }));
       }
+      checkVisible();
     };
     const saved = courseState.get<{ categoryId?: string; itemId?: string } | null>(`${root.id}:selection`, null);
     const savedItem = saved?.itemId || courseState.get<string>(`${root.id}:active`, "");

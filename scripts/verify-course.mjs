@@ -410,6 +410,57 @@ try {
 
     const interactionConfig = await fixtureConfig("__verify-interactions");
     assert(interactionConfig.lessons.length === 1, "Single-lesson interaction fixture is incomplete");
+    const visibleContext = await browser.newContext({ viewport: { width: 1280, height: 700 } });
+    await installMockLms(visibleContext, lmsSeed());
+    const visiblePage = await visibleContext.newPage();
+    monitor(visiblePage, "visible panel exploration", origin);
+    await visiblePage.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
+    const visibleEvidence = async (index) => JSON.parse((await lmsState(visiblePage)).values["cmi.suspend_data"] || "{}").e?.[index] || [];
+    assert(!(await visibleEvidence(2)).length && !(await visibleEvidence(3)).length, "Offscreen active tabs or explorer items earned exploration");
+    await visiblePage.locator("#fixture-tabs").evaluate((root) => { root.parentElement.hidden = true; });
+    assert(!(await visibleEvidence(2)).length, "A panel inside a hidden ancestor earned exploration");
+    await visiblePage.locator("#fixture-tabs").evaluate((root) => { root.parentElement.style.visibility = "hidden"; root.parentElement.hidden = false; root.querySelector('[role="tabpanel"]')?.scrollIntoView({ behavior: "instant" }); });
+    assert(!(await visibleEvidence(2)).length, "A panel inside a visibility-hidden ancestor earned exploration");
+    await visiblePage.locator("#fixture-tabs").evaluate((root) => { root.parentElement.style.visibility = ""; });
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[2]?.includes("alpha"));
+    assert(JSON.stringify(await visibleEvidence(2)) === JSON.stringify(["alpha"]), "Revealing the initial tab without scrolling did not earn only its active panel");
+    await visiblePage.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(2));
+    assert(JSON.stringify(await visibleEvidence(2)) === JSON.stringify(["alpha", "beta"]), "Selected tab did not complete exploration");
+    assert(!(await visibleEvidence(7)).length, "A separate tab instance inherited another instance's child credit");
+    await visiblePage.locator("#fixture-nested-tabs").evaluate((root) => { root.style.visibility = "hidden"; root.querySelector('[role="tabpanel"]')?.scrollIntoView({ behavior: "instant" }); });
+    assert(!(await visibleEvidence(7)).length, "Nested hidden tab instance earned credit");
+    await visiblePage.locator("#fixture-nested-tabs").evaluate((root) => { root.style.visibility = ""; });
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[7]?.includes("alpha"));
+    assert(JSON.stringify(await visibleEvidence(7)) === JSON.stringify(["alpha"]), "A newly revealed nested tab did not earn only its initial child");
+    await visiblePage.locator("#fixture-tabs-other [data-explore-item=beta][role=tab]").click();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(7));
+    assert(JSON.stringify(await visibleEvidence(2)) === JSON.stringify(["alpha", "beta"]), "Separate tab instance changed the first activity's evidence");
+    assert(!JSON.parse((await lmsState(visiblePage)).values["cmi.suspend_data"]).c.some((index) => index === 4 || index === 5), "Displaying tabs created a separate assessment attempt");
+    await visiblePage.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
+    const duplicateCalls = lmsCalls(await lmsState(visiblePage), "LMSCommit");
+    await visiblePage.evaluate(() => window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: "fixture-tabs", itemId: "beta" } })));
+    assert(lmsCalls(await lmsState(visiblePage), "LMSCommit") === duplicateCalls, "Duplicate tab events caused another LMS save");
+    await visiblePage.reload({ waitUntil: "networkidle" });
+    assert(JSON.stringify(await visibleEvidence(2)) === JSON.stringify(["alpha", "beta"]), "Tab exploration did not survive refresh");
+    await visiblePage.locator("#fixture-items [data-explorer-item=plan]").scrollIntoViewIfNeeded();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[3]?.includes("plan"));
+    assert(JSON.stringify(await visibleEvidence(3)) === JSON.stringify(["plan"]), "Initial explorer item did not earn credit on viewport entry");
+    await visiblePage.locator("#fixture-items [data-category-choice=apply]").click();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(3));
+    assert(JSON.stringify(await visibleEvidence(3)) === JSON.stringify(["plan", "reflect"]), "Explorer did not complete after both displayed items became visible");
+    await visibleContext.close();
+    const unearnedRecord = JSON.parse(suspend(interactionConfig, interactionConfig.completion.milestones.map((item) => item.id)));
+    unearnedRecord.u = { "fixture-tabs:active": "beta" };
+    const unearnedContext = await browser.newContext();
+    await installMockLms(unearnedContext, lmsSeed({ "cmi.core.lesson_status": "incomplete", "cmi.suspend_data": JSON.stringify(unearnedRecord) }));
+    const unearnedPage = await unearnedContext.newPage();
+    await unearnedPage.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
+    assert((await unearnedPage.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta", "Active tab did not restore");
+    await unearnedPage.locator("#fixture-tabs [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
+    await unearnedPage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[2]?.includes("beta"));
+    assert(JSON.stringify(JSON.parse((await lmsState(unearnedPage)).values["cmi.suspend_data"]).e[2]) === JSON.stringify(["beta"]), "Restored active tab did not earn only its visible, previously unearned child");
+    await unearnedContext.close();
     const directAccessContext = await browser.newContext();
     await installMockLms(directAccessContext, lmsSeed());
     const directAccess = await directAccessContext.newPage();
@@ -418,15 +469,16 @@ try {
     await directAccess.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
     await directAccess.locator("#fixture-carousel [data-carousel-next]").click();
     await directAccess.locator("#fixture-items [data-category-choice=apply]").click();
+    await directAccess.locator("#fixture-items [data-explorer-item=reflect]").scrollIntoViewIfNeeded();
     await directAccess.locator('#fixture-flips [data-flip-id="back"]').click();
     let directState = JSON.parse((await lmsState(directAccess)).values["cmi.suspend_data"]);
     assert((await directAccess.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta" &&
       (await directAccess.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" &&
       (await directAccess.locator("#fixture-items [data-item-choice=reflect]").getAttribute("aria-pressed")) === "true" &&
       (await directAccess.locator('#fixture-flips [data-flip-id="back"]').getAttribute("aria-expanded")) === "true" &&
-      JSON.stringify(directState.e[3]) === JSON.stringify(["reflect"]) &&
+      directState.e[3]?.includes("reflect") &&
       JSON.stringify(directState.e[6]) === JSON.stringify(["back"]) &&
-      !directState.c.includes(3) && !directState.c.includes(6), "Later tabs, carousel items, choices or cards required earlier items or granted unearned completion");
+      !directState.c.includes(6), "Later tabs, carousel items, choices or cards required earlier items or granted unearned completion");
     await directAccess.reload({ waitUntil: "networkidle" });
     directState = JSON.parse((await lmsState(directAccess)).values["cmi.suspend_data"]);
     assert((await directAccess.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta" &&
@@ -486,8 +538,9 @@ try {
     await interaction.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
     assert(JSON.stringify(await exploredIds(2)) === JSON.stringify(["alpha", "beta"]), "Tracked tabs did not earn the visible initial panel and selected panel");
     await interaction.locator("#fixture-items [data-category-choice=apply]").click();
-    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect"]) &&
-      !JSON.parse((await lmsState(interaction)).values["cmi.suspend_data"]).c.includes(3), "Explorer credited an unselected item or completed early");
+    await interaction.locator("#fixture-items [data-explorer-item=reflect]").scrollIntoViewIfNeeded();
+    await interaction.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[3]?.includes("reflect"));
+    assert((await exploredIds(3)).includes("reflect"), "Explorer did not credit its visible selected item");
     await assertNoExplorationTally(interaction, "#fixture-items");
     await interaction.locator('#fixture-flips [data-flip-id="front"]').click();
     assert(JSON.stringify(await exploredIds(6)) === JSON.stringify(["front"]) &&
@@ -496,11 +549,13 @@ try {
     await assertNoExplorationTally(interaction, "#fixture-flips");
     await interaction.reload({ waitUntil: "networkidle" });
     assert(await interaction.locator("#fixture-items [data-explorer-item=reflect]").isVisible() && (await interaction.locator("#fixture-items [data-category-choice=apply]").getAttribute("aria-pressed")) === "true", "Explorer did not restore category and item atomically");
-    assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect"]), "Explorer restoration emitted new exploration");
+    assert((await exploredIds(3)).includes("reflect"), "Explorer restoration lost earned exploration");
     assert(JSON.stringify(await exploredIds(6)) === JSON.stringify(["front"]), "Flipped-card exploration evidence did not restore");
     for (const selector of ["#fixture-steps", "#fixture-items", "#fixture-flips"]) await assertNoExplorationTally(interaction, selector);
     assert((await interaction.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" && (await interaction.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta", "Carousel or tabs did not restore active content");
     await interaction.locator("#fixture-items [data-category-choice=prepare]").click();
+    await interaction.locator("#fixture-items [data-explorer-item=plan]").scrollIntoViewIfNeeded();
+    await interaction.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[3]?.includes("plan"));
     await interaction.locator('#fixture-flips [data-flip-id="back"]').click();
     const completedExploration = JSON.parse((await lmsState(interaction)).values["cmi.suspend_data"]);
     assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect", "plan"]) &&

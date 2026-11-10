@@ -10,6 +10,7 @@ const { id, label, items, tracked = false } = Astro.props as Props;
 </div>
 <script>
   import { courseStateReady } from "../lib/course-state";
+  import { watchVisiblePanelExploration } from "../lib/visible-panel-exploration";
   courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-premium-carousel]").forEach((root) => {
     if (root.dataset.ready === "true") return;
     root.dataset.ready = "true";
@@ -17,16 +18,11 @@ const { id, label, items, tracked = false } = Astro.props as Props;
     const previous = root.querySelector<HTMLButtonElement>("[data-carousel-prev]");
     const next = root.querySelector<HTMLButtonElement>("[data-carousel-next]");
     const count = root.querySelector<HTMLElement>("[data-carousel-count]");
-    const visited = new Set(courseState.explored(root.id));
     let active = courseState.get<number>(`${root.id}:active`, 0);
     if (!Number.isInteger(active) || active < 0 || active >= slides.length) active = 0;
-    const creditVisible = () => {
-      const slide = slides[active];
-      const itemId = slide?.dataset.carouselId;
-      if (!root.dataset.completionId || !slide || !itemId || visited.has(itemId) || slide.hidden || slide.closest("[hidden]") || document.visibilityState !== "visible") return;
-      const box = slide.getBoundingClientRect();
-      if (box.width && box.height && box.bottom > 0 && box.top < innerHeight) window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId } }));
-    };
+    const creditVisible = root.dataset.completionId
+      ? watchVisiblePanelExploration({ root, panels: slides, activePanel: () => slides[active], itemId: (slide) => slide.dataset.carouselId, courseState })
+      : () => {};
     const show = (index: number, record = true) => {
       active = index;
       slides.forEach((slide, position) => { slide.hidden = position !== index; });
@@ -37,16 +33,6 @@ const { id, label, items, tracked = false } = Astro.props as Props;
     };
     previous?.addEventListener("click", () => show(Math.max(0, active - 1)));
     next?.addEventListener("click", () => show(Math.min(slides.length - 1, active + 1)));
-    window.addEventListener("course-progress:explore-state", ((event: CustomEvent<{ activityId: string; itemIds: string[] }>) => {
-      if (event.detail.activityId !== root.id) return;
-      visited.clear(); event.detail.itemIds.forEach((itemId) => visited.add(itemId));
-    }) as EventListener);
     show(active, false);
-    if (root.dataset.completionId) {
-      const observer = new IntersectionObserver(creditVisible, { threshold: 0.01 });
-      slides.forEach((slide) => observer.observe(slide));
-      document.addEventListener("visibilitychange", creditVisible);
-      requestAnimationFrame(creditVisible);
-    }
   }));
 </script>
