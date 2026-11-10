@@ -8,6 +8,8 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 const dist = path.resolve("dist");
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
+const progressNames = (page) => page.locator(".course-progress__activity-group li:not(.course-progress__section-row) > :first-child, .course-progress__completed-group li > span:last-child").allTextContents();
+const sameNames = (actual, expected) => JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort());
 const assertNoExplorationTally = async (page, selector) => {
   const result = await page.locator(selector).evaluate((root) => ({
     caption: Boolean(root.querySelector("[data-flip-status], [data-explorer-status], [data-step-status]")),
@@ -17,6 +19,8 @@ const assertNoExplorationTally = async (page, selector) => {
 };
 const builtConfig = JSON.parse((await readFile(path.join(dist, "index.html"), "utf8")).match(/<script\b[^>]*data-course-config[^>]*>([\s\S]*?)<\/script>/)?.[1] || "null");
 assert(builtConfig?.lessons?.length > 0 && builtConfig?.completion?.milestones && builtConfig?.completion?.storageKey, "Built course configuration is missing lessons or milestones.");
+const approvedDemoNames = ["Design learning with purpose", "A learner’s view", "Three principles to explore", "Choose the strongest next step", "Apply the approach", "Explore three planning lenses", "Move from brief to build", "Match the need to the pattern", "Plan one purposeful choice"];
+assert(JSON.stringify(builtConfig.completion.milestones.map((item) => item.label)) === JSON.stringify(approvedDemoNames), "Progress source labels diverge from the course's rendered activity titles");
 const lessonFile = (route) => path.join(dist, ...route.split("/").filter(Boolean), "index.html");
 const fixtureDist = path.resolve(".verification-dist");
 const astro = path.resolve("node_modules", "astro", "bin", "astro.mjs");
@@ -125,6 +129,7 @@ try {
       assert(await progress.evaluate((node) => getComputedStyle(node).outlineStyle !== "none"), `${width}px progress focus invisible`);
       await progress.press("Enter");
       assert(await page.locator("[data-progress-panel]").isVisible(), `${width}px progress panel did not open`);
+      assert(sameNames(await progressNames(page), approvedDemoNames), `${width}px initial Progress entries changed or gained generated instructions`);
       const lessonRows = page.locator("[data-progress-lesson]");
       for (const lesson of builtConfig.lessons) {
         const row = page.locator(`[data-progress-lesson="${lesson.id}"]`);
@@ -164,6 +169,22 @@ try {
       explored: Object.fromEntries(builtConfig.completion.milestones.filter((item) => item.type === "explore").map((item) => [item.id, item.requiredItems])),
       ui: {},
     };
+    for (const width of [320, 1280]) {
+      for (const phase of ["partial", "complete"]) {
+        const completed = phase === "partial" ? ["overview", "story"] : completeState.completed;
+        const saved = { ...completeState, completed, explored: phase === "complete" ? completeState.explored : {} };
+        const labelContext = await browser.newContext({ viewport: { width, height: 900 } });
+        await labelContext.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: builtConfig.completion.storageKey, value: saved });
+        const labelPage = await labelContext.newPage();
+        monitor(labelPage, `${width}px ${phase} Progress`, origin);
+        await labelPage.goto(origin, { waitUntil: "networkidle" });
+        assert(sameNames(await progressNames(labelPage), approvedDemoNames), `${width}px ${phase} Progress labels diverged from approved titles`);
+        assert((await labelPage.locator(".course-progress__completed-group li").count()) === completed.length, `${width}px ${phase} Progress status changed`);
+        await labelPage.reload({ waitUntil: "networkidle" });
+        assert(sameNames(await progressNames(labelPage), approvedDemoNames), `${width}px restored ${phase} Progress labels changed`);
+        await labelContext.close();
+      }
+    }
     const context = await browser.newContext();
     await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: builtConfig.completion.storageKey, value: completeState });
     const page = await context.newPage();
@@ -217,10 +238,30 @@ try {
       await single.locator("[data-progress-trigger]").click();
       assert((await single.locator("[data-progress-lesson]").count()) === 1 &&
         (await single.locator(".course-progress__section-row").count()) >= 2 &&
-        (await single.locator("[data-progress-lessons]").textContent()).includes("Decision checks"), `Grouped Progress sections are missing at ${width}px`);
+        (await single.locator("[data-progress-lessons]").textContent()).includes("Check the decisions"), `Grouped Progress sections are missing at ${width}px`);
+      assert(sameNames(await progressNames(single), ["Choose a useful learning pattern", "Explore a short process", "Choose the first action", "Choose the next action"]), `One-scroll Progress activity titles changed at ${width}px`);
+      assert((await single.locator(".course-progress__section-row").allTextContents()).includes("Explore a short process"), `Legitimate Explore section title was stripped at ${width}px`);
       await single.locator('.course-progress__section-row [data-checklist-target="fixture-steps"]').click();
       await single.waitForFunction(() => location.hash === "#fixture-steps" && document.activeElement?.closest("#fixture-steps") !== null);
       await singleContext.close();
+    }
+    const onePageProgress = await fixtureConfig("__verify-one-page");
+    const onePageNames = ["Choose a useful learning pattern", "Explore a short process", "Choose the first action", "Choose the next action"];
+    for (const width of [320, 1280]) {
+      for (const phase of ["partial", "complete"]) {
+        const completed = phase === "partial" ? ["fixture-intro"] : onePageProgress.completion.milestones.map((item) => item.id);
+        const saved = { completed, watchRanges: {}, watchDurations: {}, explored: phase === "complete" ? { "fixture-steps": ["notice", "choose", "act"] } : {}, ui: {} };
+        const labelContext = await browser.newContext({ viewport: { width, height: 900 } });
+        await labelContext.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: onePageProgress.completion.storageKey, value: saved });
+        const labelPage = await labelContext.newPage();
+        monitor(labelPage, `one-scroll ${width}px ${phase} Progress`, origin);
+        await labelPage.goto(onePageUrl, { waitUntil: "networkidle" });
+        assert(sameNames(await progressNames(labelPage), onePageNames), `One-scroll ${width}px ${phase} Progress labels changed`);
+        assert((await labelPage.locator(".course-progress__completed-group li").count()) === completed.length, `One-scroll ${width}px ${phase} statuses changed`);
+        await labelPage.reload({ waitUntil: "networkidle" });
+        assert(sameNames(await progressNames(labelPage), onePageNames), `One-scroll ${width}px restored ${phase} Progress labels changed`);
+        await labelContext.close();
+      }
     }
 
     const singleLmsContext = await browser.newContext({ reducedMotion: "reduce" });
@@ -672,6 +713,7 @@ try {
     monitor(fixture, "completion fixture", origin);
     await fixture.goto(`${origin}/__verify-completion/`, { waitUntil: "networkidle" });
     await waitCompleted(fixture, "fixture-view", "astro-course-progress:verification-fixture:v1", 500);
+    assert((await progressNames(fixture)).includes("Complete event"), "Legitimate Complete activity title was stripped from outstanding Progress");
     const fixtureState = () => fixture.evaluate(() => JSON.parse(localStorage.getItem("astro-course-progress:verification-fixture:v1") || "{}"));
     assert(!(await fixtureState()).completed?.includes("fixture-later-view"), "Offscreen VIEW completed before viewport entry");
     assert(!(await fixtureState()).completed?.includes("fixture-hidden-view"), "Hidden VIEW completed");
@@ -704,6 +746,7 @@ try {
     await waitCompleted(fixture, "fixture-complete", "astro-course-progress:verification-fixture:v1");
     await fixture.reload({ waitUntil: "networkidle" });
     assert((await fixtureState()).completed?.includes("fixture-complete") && !(await fixtureState()).completed?.includes("fixture-hidden-view"), "Standalone activity progress did not restore safely");
+    assert((await fixture.locator(".course-progress__completed-group li > span:last-child").allTextContents()).includes("Complete event"), "Legitimate Complete activity title changed after completion or restore");
     await fixture.close();
 
     const large = await browser.newPage();

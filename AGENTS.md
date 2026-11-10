@@ -10,6 +10,7 @@ This repository is a reusable Astro course shell.
 - Content enclosed in curly braces `{...}` is non-learner-facing guidance: do not display the braces or their contents. Clearly identified developer/build instructions guide implementation but must not appear as learner-facing copy. Ordinary parentheses `(...)` and square brackets `[...]` are **not** exclusions. If it is unclear whether text is learner copy or an instruction, ask before omitting or rewriting it.
 - Generic style rules must not silently remove approved storyboard copy. Place copy unsuitable for a prescribed treatment appropriately elsewhere without changing its wording. Preserve mandatory shell interface wording separately from storyboard copy.
 - Do not automatically add learner-facing exploration tally captions such as “X of Y cards/items/steps explored”. Track exploration internally and reflect completion through the established Progress interface. Do not invent these captions during course builds. If approved storyboard copy explicitly contains a conflicting tally, flag the conflict rather than silently changing approved wording.
+- Progress menu headings and entries must use approved section/activity names only. Never automatically prepend instructional verbs such as Complete, View, Watch, Explore or Submit.
 - Compare rendered learner copy against the storyboard. Account for every learner-facing passage and record permitted exclusions. Report unresolved differences; a successful build alone does not establish verbatim fidelity.
 
 ## Mandatory access within an open lesson

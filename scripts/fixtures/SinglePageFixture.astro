@@ -16,15 +16,15 @@ const config: CourseConfig = {
     { id: "check", title: "Check your understanding", targetId: "fixture-quiz" },
   ],
   sections: [
-    { id: "fixture-intro", label: "Introduction", milestoneIds: ["fixture-intro"] },
-    { id: "fixture-steps", label: "Ordered process", milestoneIds: ["fixture-steps"] },
-    { id: "fixture-quiz", label: "Decision checks", milestoneIds: ["fixture-quiz-first", "fixture-quiz-second"] },
+    { id: "fixture-intro", label: "Choose a useful learning pattern", milestoneIds: ["fixture-intro"] },
+    { id: "fixture-steps", label: "Explore a short process", milestoneIds: ["fixture-steps"] },
+    { id: "fixture-quiz", label: "Check the decisions", milestoneIds: ["fixture-quiz-first", "fixture-quiz-second"] },
   ],
   completion: { storageKey: "astro-course-progress:single-page-fixture:v1", sequentialUnlocking: true, milestones: [
-    { id: "fixture-intro", label: "Read the introduction", type: "view", targetId: "fixture-intro", path: "/", required: true },
-    { id: "fixture-steps", label: "Explore all steps", type: "explore", targetId: "fixture-steps", path: "/", requiredItems: ["notice", "choose", "act"], required: true },
-    { id: "fixture-quiz-first", label: "Answer the first check", type: "submit", targetId: "fixture-quiz-first", path: "/", required: true },
-    { id: "fixture-quiz-second", label: "Answer the second check", type: "submit", targetId: "fixture-quiz-second", path: "/", required: true },
+    { id: "fixture-intro", label: "Choose a useful learning pattern", type: "view", targetId: "fixture-intro", path: "/", required: true },
+    { id: "fixture-steps", label: "Explore a short process", type: "explore", targetId: "fixture-steps", path: "/", requiredItems: ["notice", "choose", "act"], required: true },
+    { id: "fixture-quiz-first", label: "Choose the first action", type: "submit", targetId: "fixture-quiz-first", path: "/", required: true },
+    { id: "fixture-quiz-second", label: "Choose the next action", type: "submit", targetId: "fixture-quiz-second", path: "/", required: true },
   ] },
   package: { identifier: "single-page-fixture-scorm-12", filename: "Single-Page-Fixture.zip", launchFile: "index.html", title: "Single-page fixture" },
 };
