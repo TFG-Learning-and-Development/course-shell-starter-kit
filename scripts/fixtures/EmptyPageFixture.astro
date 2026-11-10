@@ -1,0 +1,19 @@
+---
+import CoursePage from "../../src/components/CoursePage.astro";
+import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
+
+const config: CourseConfig = {
+  identity: { id: "empty-page-fixture", title: "Empty-page fixture", description: "Neutral empty-requirements example" },
+  brand: { homeLabel: "Go to the overview" },
+  theme: defaultCourseTheme,
+  lessons: [{ id: "entry", path: "/", label: "Example course" }],
+  navigationMode: "sections",
+  navigationLessons: [{ id: "start", title: "Start here", targetId: "fixture-intro" }],
+  completion: { storageKey: "astro-course-progress:empty-page-fixture:v1", sequentialUnlocking: true, milestones: [] },
+  package: { identifier: "empty-page-fixture-scorm-12", filename: "Empty-Page-Fixture.zip", launchFile: "index.html", title: "Content" },
+};
+validateCourseConfig(config);
+---
+<CoursePage lessonId="entry" {config}>
+  <section class="premium-section" id="fixture-intro"><div class="container"><h1>Neutral empty requirements</h1></div></section>
+</CoursePage>

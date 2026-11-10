@@ -110,7 +110,7 @@
 .step-group__controls [data-step-count] { color: var(--muted); font-size: var(--course-type-ui-size); font-weight: 700; text-align: center; white-space: nowrap; }
 .step-group__controls .premium-action:disabled { opacity: 1; color: #52656c; background: #e7ecec; border-color: #cbd5d5; }
 .step-group__content--image { gap: 0; padding: 0; }
-.step-group__content--image .step-group__panel { display: flex; flex: 1; flex-direction: column; justify-content: center; padding: clamp(2rem, 5vw, 3.5rem); color: #fff; background: linear-gradient(90deg, rgb(9 17 23 / 94%) 0%, rgb(9 17 23 / 78%) 55%, rgb(9 17 23 / 45%) 100%), var(--step-panel-image) center / cover; }
+.step-group__content--image .step-group__panel { display: flex; flex: 1; flex-direction: column; justify-content: center; padding: clamp(2rem, 5vw, 3.5rem); color: #fff; }
 .step-group__content--image .step-group__panel[hidden] { display: none; }
 .step-group__content--image .step-group__panel p { max-width: 39ch; }
 .step-group__content--image .step-group__controls { margin: 0; padding: var(--course-space-card); background: #fff; }

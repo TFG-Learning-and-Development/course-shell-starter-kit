@@ -121,7 +121,7 @@ Packaging does not authorise publishing, LMS upload or merging. Standalone use s
 
 The default build is a static site in `dist/` intended to be served at a domain root. A static host must serve `dist/index.html` for `/`, each configured lesson's `index.html`, and generated files beneath `dist/_astro/` and `dist/assets/`.
 
-`package:scorm` rewrites built asset links relative to each lesson folder and targets explicit `index.html` lesson files. It packages a single SCO with a manifest derived from configuration. Ordinary non-SCORM subdirectory hosting still needs a reviewed Astro `base` configuration.
+`package:scorm` creates one persistent `index.html` SCO launcher, moves the learner-facing root to `overview.html`, retains explicit nested lesson files, and rewrites local links/assets against their packaged locations. The launcher owns the LMS session while its iframe navigates; One-scroll keeps one learner document. Package/browser/manifest titles are `Content`, separate from approved learner-facing identity. `verify:scorm` tests extracted Multi-page and temporary neutral One-scroll ZIPs under strict nested hosting with a simulated LMS. Ordinary non-SCORM subdirectory hosting still needs a reviewed Astro `base` configuration.
 
 ## SCORM status
 

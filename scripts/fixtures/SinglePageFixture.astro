@@ -1,6 +1,7 @@
 ---
 import CoursePage from "../../src/components/CoursePage.astro";
 import StepGroup from "../../src/components/StepGroup.astro";
+import ExploreGroup from "../../src/components/ExploreGroup.astro";
 import AssessmentSequence from "../../src/components/AssessmentSequence.astro";
 import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
 
@@ -14,10 +15,12 @@ const config: CourseConfig = {
     { id: "start", title: "Start here", targetId: "fixture-intro" },
     { id: "process", title: "Explore the process", targetId: "fixture-steps" },
     { id: "check", title: "Check your understanding", targetId: "fixture-quiz" },
+    { id: "tabs", title: "Explore the choices", targetId: "fixture-tabs" },
   ],
   sections: [
     { id: "fixture-intro", label: "Choose a useful learning pattern", milestoneIds: ["fixture-intro"] },
     { id: "fixture-steps", label: "Explore a short process", milestoneIds: ["fixture-steps"] },
+    { id: "fixture-tabs", label: "Explore the choices", milestoneIds: ["fixture-tabs"] },
     { id: "fixture-quiz", label: "Check the decisions", milestoneIds: ["fixture-quiz-first", "fixture-quiz-second"] },
   ],
   completion: { storageKey: "astro-course-progress:single-page-fixture:v1", sequentialUnlocking: true, milestones: [
@@ -25,8 +28,9 @@ const config: CourseConfig = {
     { id: "fixture-steps", label: "Explore a short process", type: "explore", targetId: "fixture-steps", path: "/", requiredItems: ["notice", "choose", "act"], required: true },
     { id: "fixture-quiz-first", label: "Choose the first action", type: "submit", targetId: "fixture-quiz-first", path: "/", required: true },
     { id: "fixture-quiz-second", label: "Choose the next action", type: "submit", targetId: "fixture-quiz-second", path: "/", required: true },
+    { id: "fixture-tabs", label: "Explore the choices", type: "explore", targetId: "fixture-tabs", path: "/", requiredItems: ["alpha", "beta"], required: true },
   ] },
-  package: { identifier: "single-page-fixture-scorm-12", filename: "Single-Page-Fixture.zip", launchFile: "index.html", title: "Single-page fixture" },
+  package: { identifier: "single-page-fixture-scorm-12", filename: "Single-Page-Fixture.zip", launchFile: "index.html", title: "Content" },
 };
 validateCourseConfig(config);
 ---
@@ -43,4 +47,5 @@ validateCourseConfig(config);
     { id: "first", title: "Choose the first action", prompt: "A learner needs to compare ideas. What should the activity support?", options: ["A meaningful comparison", "An unrelated timer"], correctIndex: 0, correctFeedback: "A comparison serves the goal.", incorrectFeedback: "A timer does not support the comparison." },
     { id: "second", title: "Choose the next action", prompt: "What should feedback explain?", options: ["Only the selected option", "A useful next step"], correctIndex: 1, correctFeedback: "A next step helps learners act.", incorrectFeedback: "Explain what the learner can do next." },
   ]} />
+  <ExploreGroup id="fixture-tabs" title="Explore the choices" variant="tabs" items={[{ id: "alpha", title: "First choice", body: "Visible first panel." }, { id: "beta", title: "Second choice", body: "Visible second panel." }]} />
 </CoursePage>

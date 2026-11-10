@@ -165,6 +165,7 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
     };
     const scorm = new ScormSession();
     const launch = await scorm.launch();
+    const parentManaged = scorm.parentManaged;
     let state = defaultState();
     let lmsStateValid = true;
     let restoredFromLms = false;
@@ -343,6 +344,7 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
     };
 
     const persist = (allowCompletion = false): boolean => {
+      if (parentManaged && scorm.parentClosing) return true;
       state.completed = Array.from(completed);
       if (!validState(state)) {
         showSaveError("Progress state is invalid and was not saved. Reopen the course or contact support; earned requirements were not discarded.");
@@ -664,7 +666,15 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
     if (import.meta.env.DEV || import.meta.env.PUBLIC_COURSE_VERIFY === "1") window.addEventListener("course-progress:test-reset", resetForTests);
 
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persist(); });
+    if (parentManaged) scorm.registerFinalSave(() => { persist(false); });
     window.addEventListener("pagehide", () => {
+      if (parentManaged) {
+        persist(false);
+        if (leavingForLesson) try { sessionStorage.setItem(internalNavigationKey, "1"); } catch { /* The next page can still restore its state. */ }
+        leavingForLesson = false;
+        beforeUnloadStarted = false;
+        return;
+      }
       if (leavingForLesson) {
         persist(false);
         try { sessionStorage.setItem(internalNavigationKey, "1"); } catch { /* The next page can still probe the active API. */ }

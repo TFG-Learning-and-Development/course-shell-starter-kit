@@ -10,7 +10,11 @@ type ScormApi = {
 };
 
 type ApiWindow = Window & { API?: ScormApi };
-const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+type ParentRuntime = { api: ScormApi | null; state: "ready" | "failed" | "closing" | "finished"; registerFinalSave(callback: () => void): void };
+const findParentRuntime = (): ParentRuntime | null => {
+  try { return window.parent !== window ? (window.parent as Window & { CourseSCORM?: ParentRuntime }).CourseSCORM || null : null; }
+  catch { return null; }
+};
 
 const findApi = (): ScormApi | null => {
   const visited = new Set<Window>();
@@ -31,11 +35,16 @@ const findApi = (): ScormApi | null => {
 export type ScormLaunch = { mode: "standalone" | "lms" | "failed"; status: string; suspendData: string; location: string; learnerId: string | null };
 
 export class ScormSession {
-  private api = findApi();
+  private parentRuntime = findParentRuntime();
+  private api = this.parentRuntime?.api || findApi();
   private active = false;
   private ready = false;
   private finished = false;
   private status = "";
+
+  get parentManaged() { return this.parentRuntime !== null; }
+  get parentClosing() { return this.parentRuntime?.state === "closing" || this.parentRuntime?.state === "finished"; }
+  registerFinalSave(callback: () => void) { this.parentRuntime?.registerFinalSave(callback); }
 
   private failure(operation: string, detail = "") {
     let code = "unknown";
@@ -91,13 +100,23 @@ export class ScormSession {
 
   async launch(): Promise<ScormLaunch> {
     const packaged = document.documentElement.dataset.scormPackage === "true";
-    for (let attempt = 0; !this.api && packaged && attempt < 40; attempt += 1) {
-      await wait(125);
-      this.api = findApi();
+    if (this.parentRuntime) {
+      if (this.parentRuntime.state !== "ready" || !this.api) return { mode: "failed", status: "", suspendData: "", location: "", learnerId: null };
+      const status = this.get("cmi.core.lesson_status");
+      const suspendData = this.get("cmi.suspend_data");
+      const location = this.get("cmi.core.lesson_location");
+      if (status === null || suspendData === null || location === null) return { mode: "failed", status: "", suspendData: "", location: "", learnerId: null };
+      this.active = true;
+      this.ready = true;
+      this.status = status;
+      return { mode: "lms", status, suspendData, location, learnerId: this.getOptional("cmi.core.student_id")?.trim() || null };
+    }
+    if (packaged) {
+      console.error("[scorm] Packaged learner page requires the persistent launcher.");
+      return { mode: "failed", status: "", suspendData: "", location: "", learnerId: null };
     }
     if (!this.api) {
-      if (packaged) console.error("[scorm] LMS API unavailable for packaged course.");
-      return { mode: packaged ? "failed" : "standalone", status: "", suspendData: "", location: "", learnerId: null };
+      return { mode: "standalone", status: "", suspendData: "", location: "", learnerId: null };
     }
     let status = this.probe("cmi.core.lesson_status");
     let suspendData = this.probe("cmi.suspend_data");
@@ -124,7 +143,7 @@ export class ScormSession {
   }
 
   save(suspendData: string, location: string, allowCompletion: boolean): boolean {
-    if (!this.active || !this.ready || this.finished) return false;
+    if (!this.active || !this.ready || this.finished || this.parentClosing) return false;
     if (suspendData.length > 4096) {
       console.error(`[scorm] cmi.suspend_data is ${suspendData.length} characters; SCORM 1.2 permits 4096. Progress was not sent to the LMS.`);
       return false;
@@ -141,6 +160,7 @@ export class ScormSession {
   }
 
   exit(suspendData: string | null, location: string): void {
+    if (this.parentManaged) return;
     if (!this.active || this.finished) return;
     if (this.ready) {
       if (suspendData !== null) this.save(suspendData, location, false);
