@@ -1,21 +1,21 @@
 ---
 type Prompt = { id: string; prompt: string; answerId: string };
 type Option = { id: string; label: string };
-interface Props { id: string; title: string; intro?: string; prompts: readonly Prompt[]; options: readonly Option[]; correctLabel?: string; incorrectLabel?: string }
-const { id, title, intro, prompts, options, correctLabel = "Matched", incorrectLabel = "Review this match" } = Astro.props as Props;
-const config = { id, answers: prompts.map((prompt) => prompt.answerId), correctLabel, incorrectLabel };
+interface Props { id: string; title: string; intro?: string; prompts: readonly Prompt[]; options: readonly Option[] }
+const { id, title, intro, prompts, options } = Astro.props as Props;
+const config = { id, answers: prompts.map((prompt) => prompt.answerId) };
 ---
 <section class="premium-section premium-section--soft" aria-labelledby={`${id}-heading`}><div class="container"><div class="premium-section__intro"><h2 id={`${id}-heading`}>{title}</h2>{intro && <p>{intro}</p>}</div><form class="matching-activity" id={id} data-completion-id={id} data-matching-activity>
   {prompts.map((prompt, index) => <div class="matching-activity__row"><label for={`${id}-select-${index}`}><strong>{prompt.prompt}</strong></label><div><select id={`${id}-select-${index}`} required data-completion-option><option value="">Choose a match</option>{options.map((option) => <option value={option.id}>{option.label}</option>)}</select><p class="matching-activity__result" data-match-result role="status"></p></div></div>)}
-  <div class="matching-activity__actions"><button class="premium-action" type="submit">Check matches</button><p class="matching-activity__summary" data-match-summary role="status" aria-live="polite"></p></div><script type="application/json" data-match-config set:html={JSON.stringify(config)}></script>
+  <div class="matching-activity__actions"><button class="premium-action" type="submit">Check matches</button></div><script type="application/json" data-match-config set:html={JSON.stringify(config)}></script>
 </form></div></section>
 <script>
   import { courseStateReady } from "../lib/course-state";
   courseStateReady.then((courseState) => document.querySelectorAll<HTMLFormElement>("[data-matching-activity]").forEach((form) => {
     if (form.dataset.ready === "true") return; form.dataset.ready = "true";
-    const node = form.querySelector<HTMLScriptElement>("[data-match-config]"); if (!node?.textContent) return; const config = JSON.parse(node.textContent) as { id: string; answers: string[]; correctLabel: string; incorrectLabel: string };
-    const selects = [...form.querySelectorAll<HTMLSelectElement>("select")]; const results = [...form.querySelectorAll<HTMLElement>("[data-match-result]")]; const summary = form.querySelector<HTMLElement>("[data-match-summary]"); const saved = courseState.get<string[]>(`${config.id}:matches`, []); selects.forEach((select, index) => { if ([...select.options].some((option) => option.value === saved[index])) select.value = saved[index]; });
+    const node = form.querySelector<HTMLScriptElement>("[data-match-config]"); if (!node?.textContent) return; const config = JSON.parse(node.textContent) as { id: string; answers: string[] };
+    const selects = [...form.querySelectorAll<HTMLSelectElement>("select")]; const results = [...form.querySelectorAll<HTMLElement>("[data-match-result]")]; const saved = courseState.get<string[]>(`${config.id}:matches`, []); selects.forEach((select, index) => { if ([...select.options].some((option) => option.value === saved[index])) select.value = saved[index]; });
     const save = () => courseState.set(`${config.id}:matches`, selects.map((select) => select.value)); selects.forEach((select) => select.addEventListener("change", save));
-    form.addEventListener("submit", (event) => { event.preventDefault(); if (!form.reportValidity()) return; let correct = 0; selects.forEach((select, index) => { const matched = select.value === config.answers[index]; if (matched) correct++; results[index].textContent = matched ? config.correctLabel : config.incorrectLabel; results[index].dataset.result = matched ? "correct" : "incorrect"; }); if (summary) summary.textContent = `${correct} of ${selects.length} matched correctly. Your valid attempt has been saved.`; save(); });
+    form.addEventListener("submit", (event) => { event.preventDefault(); if (!form.reportValidity()) return; selects.forEach((select, index) => { const correct = select.value === config.answers[index]; results[index].textContent = correct ? "Correct" : "Incorrect"; results[index].dataset.result = correct ? "correct" : "incorrect"; }); save(); });
   }));
 </script>

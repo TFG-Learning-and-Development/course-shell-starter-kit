@@ -272,7 +272,7 @@ try {
         assert(badPage.frame.url().endsWith("/overview.html") && calls(await state(badPage.page), "LMSInitialize").length === 1, `${item.mode} accepted invalid module query ${bad}.`);
         await badContext.close();
       }
-      if (lockedRoute !== "/") {
+      if (item.config.completion.sequentialUnlocking === true && lockedRoute !== "/") {
         const lockContext = await browser.newContext();
         const locked = await launch(lockContext, item, seed(), `?module=${encodeURIComponent(lockedRoute)}`);
         await locked.frame.waitForURL(`${origin}${item.base}overview.html`);

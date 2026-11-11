@@ -1,0 +1,55 @@
+---
+type Product = { id: string; title: string; front: string; backTitle: string; back: string; example?: string; image?: { src: string; alt: string } };
+type Labels = { reveal: string; return: string; previous: string; next: string };
+interface Props { id: string; label: string; instruction?: string; products: readonly Product[]; labels: Labels; layout?: "grid" | "rail"; flipStyle?: "faces" | "whole"; presentation?: "flip" | "static" }
+const { id, label, instruction, products, labels, layout = "grid", flipStyle = "faces", presentation = "flip" } = Astro.props as Props;
+const interactive = presentation === "flip";
+const whole = interactive && flipStyle === "whole";
+---
+
+<div class:list={["product-flipcards", { "product-flipcards--rail": layout === "rail" }]} data-product-flipcards>
+  {layout === "rail" && <div class="product-flipcards__rail-controls"><button type="button" data-products-prev aria-controls={id} aria-label={labels.previous}>←</button><button type="button" data-products-next aria-controls={id} aria-label={labels.next}>→</button></div>}
+  {instruction && <p class="product-flipcards__instruction">{instruction}</p>}
+  <div id={id} class:list={["product-flipcards__gallery", `product-flipcards__gallery--${layout}`, { "product-flipcards__gallery--whole": whole, "product-flipcards__gallery--static": !interactive }]} role={layout === "rail" ? "region" : undefined} aria-label={label} data-completion-id={interactive ? id : undefined} data-required-items={interactive ? JSON.stringify(products.map((product) => product.id)) : undefined}>
+    {products.map((product) => <article class:list={["product-flipcards__card", { "product-flipcards__card--whole": whole }]} data-product-card={interactive ? product.id : undefined}>
+      {!whole && <h3>{product.title}</h3>}
+      <div class="product-flipcards__faces">
+        <div class="product-flipcards__face product-flipcards__front" data-product-front aria-hidden={interactive ? "false" : undefined}>
+          {whole && <h3>{product.title}</h3>}
+          {product.image && <img src={product.image.src} alt={product.image.alt} loading="lazy" />}
+          <p>{product.front}</p>
+        </div>
+        <div class="product-flipcards__face product-flipcards__back" data-product-back aria-hidden={interactive ? "true" : undefined} inert={interactive}>
+          <h4>{product.backTitle}</h4><p>{product.back}</p>{product.example && <p class="product-flipcards__example">{product.example}</p>}
+        </div>
+      </div>
+      {interactive && <button class="product-flipcards__toggle" type="button" data-product-toggle aria-expanded="false" data-reveal-label={labels.reveal} data-return-label={labels.return} aria-label={`${labels.reveal}: ${product.title}`}><span class="product-flipcards__flip-icon" aria-hidden="true">↻</span></button>}
+    </article>)}
+  </div>
+</div>
+
+<script>
+  import { courseStateReady } from "../lib/course-state";
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-product-flipcards]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+    const gallery = root.querySelector<HTMLElement>("[data-completion-id]");
+    if (!gallery) return;
+    const setOpen = (button: HTMLButtonElement, open: boolean, record = true) => {
+      const card = button.closest<HTMLElement>("[data-product-card]"); if (!card) return;
+      const itemId = card.dataset.productCard || ""; const title = card.querySelector("h3")?.textContent || "";
+      card.dataset.flipped = String(open); button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", `${open ? button.dataset.returnLabel : button.dataset.revealLabel}: ${title}`);
+      const front = card.querySelector<HTMLElement>("[data-product-front]"); const back = card.querySelector<HTMLElement>("[data-product-back]");
+      if (front) { front.setAttribute("aria-hidden", String(open)); front.inert = open; }
+      if (back) { back.setAttribute("aria-hidden", String(!open)); back.inert = !open; }
+      if (open && record && itemId) window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: gallery.id, itemId } }));
+    };
+    root.querySelectorAll<HTMLButtonElement>("[data-product-toggle]").forEach((button) => button.addEventListener("click", () => setOpen(button, button.getAttribute("aria-expanded") !== "true")));
+    const restore = (itemIds: string[]) => root.querySelectorAll<HTMLButtonElement>("[data-product-toggle]").forEach((button) => setOpen(button, itemIds.includes(button.closest<HTMLElement>("[data-product-card]")?.dataset.productCard || ""), false));
+    restore(courseState.explored(gallery.id));
+    window.addEventListener("course-progress:explore-state", ((event: CustomEvent<{ activityId: string; itemIds: string[] }>) => { if (event.detail.activityId === gallery.id) restore(event.detail.itemIds); }) as EventListener);
+    window.addEventListener("course-progress:reset", () => restore([]));
+    root.querySelector<HTMLElement>(".product-flipcards__rail-controls")?.querySelectorAll<HTMLButtonElement>("button").forEach((button) => button.addEventListener("click", () => gallery.scrollBy({ left: (button.hasAttribute("data-products-next") ? 1 : -1) * ((gallery.querySelector<HTMLElement>("[data-product-card]")?.offsetWidth || 0) + 24), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" })));
+  }));
+</script>

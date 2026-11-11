@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 const run = promisify(execFile);
 const dist = path.resolve("dist");
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
-const progressNames = (page) => page.locator(".course-progress__activity-group li:not(.course-progress__section-row) > :first-child, .course-progress__completed-group li > span:last-child").allTextContents();
+const progressNames = async (page) => (await page.locator("[data-progress-completed] a, [data-progress-incomplete] a").allTextContents()).map((text) => text.replace(/^[✓→]\s*/, ""));
 const sameNames = (actual, expected) => JSON.stringify([...actual].sort()) === JSON.stringify([...expected].sort());
 const assertNoExplorationTally = async (page, selector) => {
   const result = await page.locator(selector).evaluate((root) => ({
@@ -110,7 +110,7 @@ try {
       assert((await page.locator(".skip-link").count()) === 1, `${width}px skip link missing`);
       assert((await page.locator(".course-links a[data-lesson-path]").count()) === builtConfig.lessons.length, `${width}px configured lesson links missing`);
       assert((await page.locator(".course-links__heading").textContent()) === "Course lessons", `${width}px lessons heading changed`);
-      assert((await page.locator("[data-progress-lessons] .course-progress__lesson").count()) === builtConfig.lessons.length, `${width}px progress lesson count changed`);
+      assert((await page.locator("[data-progress-completed], [data-progress-incomplete]").count()) === 2, `${width}px progress lists changed`);
       assert((await page.locator(".footer-inner > p").textContent()) === "Return to People Connect to continue", `${width}px footer text changed`);
       assert((await page.locator(".footer-inner > p a, .footer-inner > p button, [data-progress-reset]").count()) === 0, `${width}px learner control entered footer or Progress`);
       assert((await page.locator(".footer-inner > a").textContent()).includes("Back to top"), `${width}px Back to top missing`);
@@ -130,14 +130,7 @@ try {
       await progress.press("Enter");
       assert(await page.locator("[data-progress-panel]").isVisible(), `${width}px progress panel did not open`);
       assert(sameNames(await progressNames(page), approvedDemoNames), `${width}px initial Progress entries changed or gained generated instructions`);
-      const lessonRows = page.locator("[data-progress-lesson]");
-      for (const lesson of builtConfig.lessons) {
-        const row = page.locator(`[data-progress-lesson="${lesson.id}"]`);
-        assert((await row.count()) > 0, `${width}px missing progress row for ${lesson.path}`);
-      }
-      assert((await page.locator("[data-progress-course-count]").textContent()).includes(`of ${builtConfig.completion.milestones.filter((item) => item.required).length} completed`), `${width}px course-wide required count changed`);
-      const firstToDo = page.locator('[data-progress-lesson] .course-progress__activity-group').first();
-      if (await firstToDo.count()) assert((await firstToDo.locator("h3").textContent()) === "Still to do", `${width}px missing outstanding heading`);
+      assert((await page.locator(".course-progress__list-group h2").allTextContents()).join("|") === "Completed|Still to do", `${width}px progress list headings changed`);
       await page.keyboard.press("Escape");
       assert(!(await page.locator("[data-progress-panel]").isVisible()), `${width}px progress panel did not close`);
       const toggle = page.locator(".lessons-toggle");
@@ -179,7 +172,7 @@ try {
         monitor(labelPage, `${width}px ${phase} Progress`, origin);
         await labelPage.goto(origin, { waitUntil: "networkidle" });
         assert(sameNames(await progressNames(labelPage), approvedDemoNames), `${width}px ${phase} Progress labels diverged from approved titles`);
-        assert((await labelPage.locator(".course-progress__completed-group li").count()) === completed.length, `${width}px ${phase} Progress status changed`);
+        assert((await labelPage.locator("[data-progress-completed] li").count()) === completed.length, `${width}px ${phase} Progress status changed`);
         await labelPage.reload({ waitUntil: "networkidle" });
         assert(sameNames(await progressNames(labelPage), approvedDemoNames), `${width}px restored ${phase} Progress labels changed`);
         await labelContext.close();
@@ -237,12 +230,10 @@ try {
         return Boolean(target && header && target.getBoundingClientRect().top >= header.getBoundingClientRect().height - 2);
       }), `Keyboard Lessons anchor is obscured by the sticky header at ${width}px`);
       await single.locator("[data-progress-trigger]").click();
-      assert((await single.locator("[data-progress-lesson]").count()) === 1 &&
-        (await single.locator(".course-progress__section-row").count()) >= 2 &&
-        (await single.locator("[data-progress-lessons]").textContent()).includes("Check the decisions"), `Grouped Progress sections are missing at ${width}px`);
+      assert((await single.locator(".course-progress__list-group").count()) === 2 &&
+        (await single.locator("[data-progress-incomplete]").textContent()).includes("Choose the first action"), `Flat Progress activities are missing at ${width}px`);
       assert(sameNames(await progressNames(single), ["Choose a useful learning pattern", "Explore a short process", "Choose the first action", "Choose the next action", "Explore the choices"]), `One-scroll Progress activity titles changed at ${width}px`);
-      assert((await single.locator(".course-progress__section-row").allTextContents()).includes("Explore a short process"), `Legitimate Explore section title was stripped at ${width}px`);
-      await single.locator('.course-progress__section-row [data-checklist-target="fixture-steps"]').click();
+      await single.locator('[data-progress-incomplete] [data-checklist-target="fixture-steps"]').click();
       await single.waitForFunction(() => location.hash === "#fixture-steps" && document.activeElement?.closest("#fixture-steps") !== null);
       await singleContext.close();
     }
@@ -258,7 +249,7 @@ try {
         monitor(labelPage, `one-scroll ${width}px ${phase} Progress`, origin);
         await labelPage.goto(onePageUrl, { waitUntil: "networkidle" });
         assert(sameNames(await progressNames(labelPage), onePageNames), `One-scroll ${width}px ${phase} Progress labels changed`);
-        assert((await labelPage.locator(".course-progress__completed-group li").count()) === completed.length, `One-scroll ${width}px ${phase} statuses changed`);
+        assert((await labelPage.locator("[data-progress-completed] li").count()) === completed.length, `One-scroll ${width}px ${phase} statuses changed`);
         await labelPage.reload({ waitUntil: "networkidle" });
         assert(sameNames(await progressNames(labelPage), onePageNames), `One-scroll ${width}px restored ${phase} Progress labels changed`);
         await labelContext.close();
@@ -305,13 +296,14 @@ try {
     await singleLms.locator("#fixture-tabs [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[4]?.includes("alpha"));
     await singleLms.locator("#fixture-tabs [data-explore-item=beta][role=tab]").click();
+    await singleLms.locator("#fixture-tabs [data-explore-item=beta][role=tabpanel]").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[4]?.includes("beta"));
     await singleLms.locator('#fixture-steps [data-step-id="notice"]').click();
     await singleLms.locator("#fixture-steps [role=tabpanel]:not([hidden])").scrollIntoViewIfNeeded();
     await singleLms.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[1]?.includes("notice"));
     assert(JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).e[1].includes("act") &&
       !JSON.parse((await lmsState(singleLms)).values["cmi.suspend_data"]).c.includes(1) &&
-      !(await singleLms.locator('#fixture-steps [data-step-id="notice"] .step-group__check').isHidden()), "First visible step lost its individual exploration state");
+      (await singleLms.locator("#fixture-steps .step-group__check").count()) === 0, "First visible step lost its individual exploration state or restored an obsolete tab checkmark");
     await assertNoExplorationTally(singleLms, "#fixture-steps");
     await singleLms.locator("#fixture-steps [data-step-next]").click();
     await singleLms.locator("#fixture-steps [data-step-next]").click();
@@ -326,7 +318,7 @@ try {
       step: await singleLms.locator("#fixture-steps [data-step-count]").textContent(), errors: singleMock.errors };
     assert(restoredSingle.initialized === restoredSingle.finished + 1 && restoredSingle.checked === 1 &&
       restoredSingle.step === "Step 3 of 3" &&
-      (await singleLms.locator("#fixture-steps .step-group__check:not([hidden])").count()) === 3 &&
+      (await singleLms.locator("#fixture-steps .step-group__check").count()) === 0 &&
       (await singleLms.locator("#fixture-quiz-first [data-feedback-copy]").textContent()).includes("Incorrect response.") &&
       singleMock.active && singleMock.values["cmi.core.lesson_status"] === "completed" &&
       restoredSingle.errors.length === 0, `Single-page LMS refresh lost state or made invalid session calls: ${JSON.stringify(restoredSingle)}`);
@@ -364,7 +356,7 @@ try {
     await multiAccess.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(2));
     multiState = JSON.parse((await lmsState(multiAccess)).values["cmi.suspend_data"]);
     assert(["start", "middle", "end"].every((id) => multiState.e[2].includes(id)) &&
-      !multiState.c.includes(1) && (await multiAccess.locator("[data-progress-course-count]").textContent()).includes("2 of 3 completed"), "Multi-page steps lost exploration requirements or Progress credit");
+      !multiState.c.includes(1), "Multi-page steps lost exploration requirements or Progress credit");
     await multiAccessContext.close();
     const navPartial = suspend(navConfig, ["fixture-response"]);
     const navigationContext = await browser.newContext();
@@ -373,8 +365,8 @@ try {
     monitor(lmsPage, "simulated LMS navigation", origin);
     await lmsPage.goto(navStart, { waitUntil: "networkidle" });
     await lmsPage.locator("[data-progress-trigger]").click();
-    assert((await lmsPage.locator("[data-progress-lesson]").count()) === navConfig.lessons.length &&
-      (await lmsPage.locator("[data-progress-lessons]").textContent()).includes(navConfig.lessons[1].label), "Renamed nested lessons did not render from fixture configuration");
+    assert((await lmsPage.locator(".course-progress__list-group").count()) === 2 &&
+      sameNames(await progressNames(lmsPage), navConfig.completion.milestones.filter((milestone) => milestone.required).map((milestone) => milestone.label)), "Configured Progress activities did not render from fixture configuration");
     await lmsPage.locator("[data-progress-close]").click();
     await lmsPage.locator("[data-fixture-lesson-link]").click();
     await lmsPage.waitForURL(navReview);
@@ -495,6 +487,45 @@ try {
     await visiblePage.locator("#fixture-items [data-category-choice=apply]").click();
     await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(3));
     assert(JSON.stringify(await visibleEvidence(3)) === JSON.stringify(["plan", "reflect"]), "Explorer did not complete after both displayed items became visible");
+    await visiblePage.locator('#fixture-hotspots [data-feature-control="beta"]').first().evaluate((node) => node.click());
+    assert(!(await visibleEvidence(8)).length, "Offscreen hotspot detail earned exploration");
+    await visiblePage.locator("#fixture-hotspots").scrollIntoViewIfNeeded();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[8]?.includes("beta"));
+    await visiblePage.locator('#fixture-hotspots [data-feature-control="alpha"]').first().click();
+    await visiblePage.locator('#fixture-hotspots [data-feature-panel="alpha"]').scrollIntoViewIfNeeded();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(8));
+    assert(JSON.stringify(await visibleEvidence(8)) === JSON.stringify(["beta", "alpha"]), "Hotspot detail visibility or child tracking failed");
+    await visiblePage.reload({ waitUntil: "networkidle" });
+    assert((await visiblePage.locator('#fixture-hotspots [data-feature-control="alpha"]').first().getAttribute("aria-pressed")) === "true" &&
+      JSON.stringify(await visibleEvidence(8)) === JSON.stringify(["beta", "alpha"]), "Hotspot selection or exploration did not survive refresh");
+    await visiblePage.locator('#fixture-model-choice [data-model-panel]:not([hidden]) [data-model-id="guided"]').evaluate((node) => node.click());
+    assert(!(await visibleEvidence(9)).length, "Offscreen model choice earned exploration");
+    await visiblePage.locator("#fixture-model-choice").scrollIntoViewIfNeeded();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[9]?.includes("first"));
+    await visiblePage.locator('#fixture-model-choice [data-need-control="second"]').click();
+    await visiblePage.locator('#fixture-model-choice [data-model-panel]:not([hidden]) [data-model-id="open"]').click();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(9));
+    assert(JSON.stringify(await visibleEvidence(9)) === JSON.stringify(["first", "second"]), "Model choice did not credit only visible selected needs");
+    await visiblePage.reload({ waitUntil: "networkidle" });
+    assert((await visiblePage.locator('#fixture-model-choice [data-model-panel]:not([hidden]) [data-model-id="open"]').getAttribute("aria-pressed")) === "true", "Model choice selection did not survive refresh");
+    await visiblePage.locator("#fixture-product-flips").scrollIntoViewIfNeeded();
+    await visiblePage.locator('#fixture-product-flips [data-product-card="one"] [data-product-toggle]').click();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").e?.[10]?.includes("one"));
+    await visiblePage.locator('#fixture-product-flips [data-product-card="two"] [data-product-toggle]').click();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(10));
+    await visiblePage.reload({ waitUntil: "networkidle" });
+    assert((await visiblePage.locator('#fixture-product-flips [data-product-card="one"] [data-product-toggle]').getAttribute("aria-expanded")) === "true" &&
+      JSON.stringify(await visibleEvidence(10)) === JSON.stringify(["one", "two"]), "Product flipcards did not preserve card state and exploration");
+    await visiblePage.locator("#fixture-drag-match").scrollIntoViewIfNeeded();
+    await visiblePage.locator('#fixture-drag-match [data-answer-id="a"]').click();
+    await visiblePage.locator('#fixture-drag-match [data-slot-id="first:one"]').click();
+    await visiblePage.locator("#fixture-drag-match [data-match-check]").click();
+    assert(!(await visibleEvidence(11)).length && (await visiblePage.locator("#fixture-drag-match [data-match-result]").textContent()).includes("Complete every space."), "Partial drag matching submission earned credit or did not show its configured validation");
+    await visiblePage.locator('#fixture-drag-match [data-answer-id="b"]').click();
+    await visiblePage.locator('#fixture-drag-match [data-slot-id="first:two"]').click();
+    await visiblePage.locator("#fixture-drag-match [data-match-check]").click();
+    await visiblePage.waitForFunction(() => JSON.parse(JSON.parse(localStorage.getItem("__readiness_lms_mock")).values["cmi.suspend_data"] || "{}").c?.includes(11));
+    assert((await visiblePage.locator("#fixture-drag-match [data-match-result]").textContent()).includes("Correct."), "Drag matching did not calculate its configured answer mapping");
     await visibleContext.close();
     const unearnedRecord = JSON.parse(suspend(interactionConfig, interactionConfig.completion.milestones.map((item) => item.id)));
     unearnedRecord.u = { "fixture-tabs:active": "beta" };
@@ -517,11 +548,19 @@ try {
     await directAccess.locator("#fixture-items [data-category-choice=apply]").click();
     await directAccess.locator("#fixture-items [data-explorer-item=reflect]").scrollIntoViewIfNeeded();
     await directAccess.locator('#fixture-flips [data-flip-id="back"]').click();
+    await directAccess.locator('#fixture-product-catalog [data-catalog-category="specialist"]').click();
+    await directAccess.locator('#fixture-product-catalog [data-catalog-product-panel="discuss"] [data-catalog-image-src="/assets/demo/editorial-landscape.svg"]').click();
+    await directAccess.setViewportSize({ width: 390, height: 800 });
+    await directAccess.locator('[data-image-led-range-rail] [data-range-next]').click();
+    await directAccess.waitForFunction(() => document.querySelector("#fixture-image-led-range")?.scrollLeft > 0);
     let directState = JSON.parse((await lmsState(directAccess)).values["cmi.suspend_data"]);
     assert((await directAccess.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta" &&
       (await directAccess.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" &&
       (await directAccess.locator("#fixture-items [data-item-choice=reflect]").getAttribute("aria-pressed")) === "true" &&
       (await directAccess.locator('#fixture-flips [data-flip-id="back"]').getAttribute("aria-expanded")) === "true" &&
+      (await directAccess.locator('#fixture-product-catalog [data-catalog-category="specialist"]').getAttribute("aria-selected")) === "true" &&
+      (await directAccess.locator('#fixture-product-catalog [data-catalog-product-panel="discuss"] [data-catalog-image]').getAttribute("src")) === "/assets/demo/editorial-landscape.svg" &&
+      await directAccess.locator("#fixture-image-led-range").evaluate((track) => track.scrollLeft > 0) &&
       directState.e[3]?.includes("reflect") &&
       JSON.stringify(directState.e[6]) === JSON.stringify(["back"]) &&
       !directState.c.includes(6), "Later tabs, carousel items, choices or cards required earlier items or granted unearned completion");
@@ -530,6 +569,8 @@ try {
     assert((await directAccess.locator("#fixture-tabs [role=tab][aria-selected=true]").getAttribute("data-explore-item")) === "beta" &&
       (await directAccess.locator("#fixture-carousel [data-carousel-count]").textContent()) === "2 of 2" &&
       (await directAccess.locator("#fixture-items [data-item-choice=reflect]").getAttribute("aria-pressed")) === "true" &&
+      (await directAccess.locator('#fixture-product-catalog [data-catalog-category="specialist"]').getAttribute("aria-selected")) === "true" &&
+      (await directAccess.locator('#fixture-product-catalog [data-catalog-product="discuss"]').getAttribute("aria-pressed")) === "true" &&
       JSON.stringify(directState.e[6]) === JSON.stringify(["back"]) &&
       !(await directAccess.locator('#fixture-flips [data-flip-id="front"]').isDisabled()), "Direct item access or earned evidence did not restore");
     await directAccessContext.close();
@@ -550,8 +591,8 @@ try {
     const attempt = await attemptContext.newPage();
     await attempt.goto(`${origin}/__verify-interactions/`, { waitUntil: "networkidle" });
     await attempt.locator("[data-progress-trigger]").click();
-    assert((await attempt.locator("[data-progress-lesson]").count()) === interactionConfig.lessons.length &&
-      (await attempt.locator("[data-progress-course-count]").textContent()).includes(`of ${interactionConfig.completion.milestones.filter((item) => item.required).length} completed`), "Single-lesson course summary did not follow configuration");
+    assert((await attempt.locator(".course-progress__list-group").count()) === 2 &&
+      (await attempt.locator("[data-progress-incomplete] li").count()) === interactionConfig.completion.milestones.filter((item) => item.required).length, "Single-lesson course Progress did not follow configuration");
     await attempt.locator("[data-progress-close]").click();
     await attempt.locator("#fixture-assessment input[type=radio]").last().check();
     const attemptMock = await lmsState(attempt);
@@ -605,9 +646,9 @@ try {
     await interaction.locator('#fixture-flips [data-flip-id="back"]').click();
     const completedExploration = JSON.parse((await lmsState(interaction)).values["cmi.suspend_data"]);
     assert(JSON.stringify(await exploredIds(3)) === JSON.stringify(["reflect", "plan"]) &&
-      JSON.stringify(await exploredIds(6)) === JSON.stringify(["front", "back"]) &&
-      completedExploration.c.includes(3) && completedExploration.c.includes(6) &&
-      (await interaction.locator("[data-progress-course-count]").textContent()).includes(`5 of ${interactionConfig.completion.milestones.length} completed`), "Completed exploration lost child evidence, credit or Progress summary");
+       JSON.stringify(await exploredIds(6)) === JSON.stringify(["front", "back"]) &&
+       completedExploration.c.includes(3) && completedExploration.c.includes(6) &&
+       (await interaction.locator("[data-progress-completed] li").count()) === 5, "Completed exploration lost child evidence, credit or Progress summary");
     await assertNoExplorationTally(interaction, "#fixture-items");
     await assertNoExplorationTally(interaction, "#fixture-flips");
     await interaction.reload({ waitUntil: "networkidle" });
@@ -751,7 +792,7 @@ try {
     await waitCompleted(fixture, "fixture-complete", "astro-course-progress:verification-fixture:v1");
     await fixture.reload({ waitUntil: "networkidle" });
     assert((await fixtureState()).completed?.includes("fixture-complete") && !(await fixtureState()).completed?.includes("fixture-hidden-view"), "Standalone activity progress did not restore safely");
-    assert((await fixture.locator(".course-progress__completed-group li > span:last-child").allTextContents()).includes("Complete event"), "Legitimate Complete activity title changed after completion or restore");
+    assert((await fixture.locator("[data-progress-completed] a").allTextContents()).some((text) => text.includes("Complete event")), "Legitimate Complete activity title changed after completion or restore");
     await fixture.close();
 
     const large = await browser.newPage();

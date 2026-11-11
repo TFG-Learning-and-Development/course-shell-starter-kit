@@ -27,12 +27,12 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
       <div>
         <p>Activity progress</p>
         <strong data-progress-value aria-live="polite">0% complete</strong>
-        <p class="course-progress__course-count" data-progress-course-count>Course required activities: 0 of 0 completed</p>
       </div>
       <button class="course-progress__close" type="button" data-progress-close aria-label="Close activity progress">&times;</button>
     </div>
     <div class="course-progress__bar" role="progressbar" aria-label="Activity completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-progress-bar><span data-progress-bar-fill></span></div>
-    <div class="course-progress__lessons" data-progress-lessons></div>
+    <div class="course-progress__list-group"><h2>Completed</h2><ul data-progress-completed></ul></div>
+    <div class="course-progress__list-group"><h2>Still to do</h2><ul data-progress-incomplete></ul></div>
   </aside>
   <p class="course-progress__save-error" data-progress-save-error role="alert" hidden>Progress could not be saved. Keep this page open and try again.</p>
 
@@ -282,6 +282,8 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
     const bar = root.querySelector<HTMLElement>("[data-progress-bar]");
     const lessonsNode = root.querySelector<HTMLElement>("[data-progress-lessons]");
     const courseCount = root.querySelector<HTMLElement>("[data-progress-course-count]");
+    const completedList = root.querySelector<HTMLUListElement>("[data-progress-completed]");
+    const incompleteList = root.querySelector<HTMLUListElement>("[data-progress-incomplete]");
     const saveError = root.querySelector<HTMLElement>("[data-progress-save-error]");
     const showSaveError = (message: string) => {
       if (!saveError) return;
@@ -308,10 +310,10 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
         let children: string[] = [];
         try { children = JSON.parse(target.dataset.requiredItems || "[]"); } catch { /* Report below. */ }
         const declared = milestone.requiredItems || [];
-        const rendered = [...target.querySelectorAll<HTMLElement>("[data-flip-id], [data-step-id], [data-item-choice], [data-reveal-id], [data-carousel-id], [data-explore-item]")]
-          .map((node) => node.dataset.flipId || node.dataset.stepId || node.dataset.itemChoice || node.dataset.revealId || node.dataset.carouselId || node.dataset.exploreItem);
-        const actionable = (id: string) => [...target.querySelectorAll<HTMLElement>("[data-flip-id], [data-step-id], [data-item-choice], [data-reveal-id], [data-carousel-id], [data-explore-item]")]
-          .some((node) => (node.dataset.flipId || node.dataset.stepId || node.dataset.itemChoice || node.dataset.revealId || node.dataset.carouselId || node.dataset.exploreItem) === id &&
+        const rendered = [...target.querySelectorAll<HTMLElement>("[data-flip-id], [data-step-id], [data-item-choice], [data-reveal-id], [data-carousel-id], [data-explore-item], [data-feature-control], [data-need-control], [data-product-card]")]
+          .map((node) => node.dataset.flipId || node.dataset.stepId || node.dataset.itemChoice || node.dataset.revealId || node.dataset.carouselId || node.dataset.exploreItem || node.dataset.featureControl || node.dataset.needControl || node.dataset.productCard);
+        const actionable = (id: string) => [...target.querySelectorAll<HTMLElement>("[data-flip-id], [data-step-id], [data-item-choice], [data-reveal-id], [data-carousel-id], [data-explore-item], [data-feature-control], [data-need-control], [data-product-card]")]
+          .some((node) => (node.dataset.flipId || node.dataset.stepId || node.dataset.itemChoice || node.dataset.revealId || node.dataset.carouselId || node.dataset.exploreItem || node.dataset.featureControl || node.dataset.needControl || node.dataset.productCard) === id &&
             (node instanceof HTMLButtonElement || Boolean(node.querySelector("button")) || Boolean(node.dataset.carouselId && target.querySelector("[data-carousel-next], [data-carousel-prev]"))));
         if (!Array.isArray(children) || !children.length || children.length !== declared.length || declared.some((id, index) => children[index] !== id) || declared.some((id) => !rendered.includes(id) || !actionable(id))) problem = `EXPLORE target "${milestone.targetId}" has missing or mismatched required children or triggers.`;
       }
@@ -395,6 +397,23 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
         window.dispatchEvent(new CustomEvent("course-progress:panel-open"));
         closeButton?.focus();
       } else if (wasOpen && returnFocus) trigger?.focus();
+    };
+
+    const renderList = (list: HTMLUListElement | null, entries: Milestone[], isComplete: boolean) => {
+      if (!list) return;
+      list.replaceChildren();
+      entries.forEach((milestone) => {
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = `${courseUrl(milestone.path || "/")}#${encodeURIComponent(milestone.targetId)}`;
+        link.dataset.checklistTarget = milestone.targetId;
+        link.dataset.checklistPath = milestone.path || "/";
+        link.dataset.complete = String(isComplete);
+        link.textContent = `${isComplete ? "✓" : "→"} ${milestone.label}`;
+        link.addEventListener("click", () => setPanelOpen(false, false));
+        item.append(link);
+        list.append(item);
+      });
     };
 
     const renderLessons = () => {
@@ -540,10 +559,9 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
       });
     };
 
-    lessonsNode?.addEventListener("click", (event) => {
+    root.addEventListener("click", (event) => {
       const link = (event.target as Element).closest<HTMLAnchorElement>("a[data-checklist-target]");
-      if (!link || !lessonsNode.contains(link)) return;
-      if (!unlockedPaths().includes(link.dataset.checklistPath || "")) { event.preventDefault(); return; }
+      if (!link || !root.contains(link)) return;
       if (link.dataset.checklistPath !== currentPath) return;
       event.preventDefault();
       setPanelOpen(false, false);
@@ -576,7 +594,8 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
       if (courseCount) courseCount.textContent = `Course required activities: ${completeCount} of ${requiredMilestones.length} completed`;
       if (barFill) barFill.style.width = `${percent}%`;
       bar?.setAttribute("aria-valuenow", String(percent));
-      renderLessons();
+      renderList(completedList, requiredMilestones.filter((milestone) => completed.has(milestone.id)), true);
+      renderList(incompleteList, requiredMilestones.filter((milestone) => !completed.has(milestone.id)), false);
       publishState();
     };
 
@@ -806,6 +825,12 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
   .course-progress__close:hover, .course-progress__close:focus-visible { background: var(--course-accent); color: var(--ink); outline: 2px solid var(--focus-on-light); outline-offset: 2px; }
   .course-progress__bar { height: 10px; margin: 20px 0 18px; overflow: hidden; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px #6d777d; }
   .course-progress__bar span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--course-accent); transition: width 0.2s ease; }
+  .course-progress__list-group + .course-progress__list-group { margin-top: 14px; }
+  .course-progress__list-group h2 { margin: 0 0 5px; color: #071827; font-size: var(--course-type-ui-size); line-height: 1.15; }
+  .course-progress__list-group ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  :global(.course-progress__list-group li) { margin: 0; }
+  :global(.course-progress__list-group a) { display: block; color: var(--course-accent-strong); font-size: var(--course-type-ui-size); line-height: 1.35; text-align: left; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--course-accent-strong) 35%, transparent); text-underline-offset: 2px; }
+  :global(.course-progress__list-group a[data-complete="true"]) { color: #435261; text-decoration: none; }
   .course-progress__save-error { position: absolute; top: calc(100% + .4rem); right: 0; z-index: 41; width: min(340px, calc(100vw - 2rem)); margin: 0; padding: .75rem 1rem; border: 2px solid #9d1b1b; border-radius: .35rem; color: #7d1010; background: #fff; box-shadow: 0 .4rem 1rem rgb(0 0 0 / 18%); font-size: var(--course-type-ui-size); line-height: 1.4; }
   .course-progress__save-error[hidden] { display: none; }
   .course-progress__lessons { display: grid; gap: 14px; }

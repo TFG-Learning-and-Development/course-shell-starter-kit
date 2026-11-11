@@ -1,0 +1,65 @@
+---
+type Model = { id: string; title: string; summary: string; image: { src: string; alt: string }; guidance?: string };
+type Need = { id: string; prompt: string; correctId: string; correctFeedback: string; incorrectFeedback: string };
+type Note = { label: string; text: string };
+interface Props {
+  id: string; title: string; intro?: string; needsLabel: string; promptHeading: string; selectionInstruction: string;
+  models: readonly Model[]; needs: readonly Need[]; guideTitle?: string; note?: Note;
+}
+const { id, title, intro, needsLabel, promptHeading, selectionInstruction, models, needs, guideTitle, note } = Astro.props as Props;
+const config = { needs };
+---
+
+<section class="premium-section premium-section--dark model-choice-section" id={id} data-completion-id={id} data-required-items={JSON.stringify(needs.map((need) => need.id))} data-model-choice aria-labelledby={`${id}-heading`}>
+  <div class="container">
+    <div class="premium-section__intro"><h2 id={`${id}-heading`}>{title}</h2>{intro && <p>{intro}</p>}</div>
+    <div class="model-choice">
+      <div class="model-choice__needs" aria-label={needsLabel}>{needs.map((need, index) => <button type="button" data-need-control={need.id} aria-controls={`${id}-panel-${need.id}`} aria-pressed={index === 0 ? "true" : "false"}>{need.prompt}</button>)}</div>
+      {needs.map((need, needIndex) => <div class="model-choice__main" id={`${id}-panel-${need.id}`} data-model-panel={need.id} hidden={needIndex !== 0}>
+        <div class="model-choice__prompt"><h3>{promptHeading}</h3><p>{need.prompt}</p><p>{selectionInstruction}</p></div>
+        <div class="model-choice__cards">{models.map((model) => <button type="button" data-model-id={model.id} aria-pressed="false"><img src={model.image.src} alt={model.image.alt} loading="lazy" /><strong>{model.title}</strong><span>{model.summary}</span></button>)}</div>
+        <p class="model-choice__feedback" data-model-feedback role="status" aria-live="polite" hidden></p>
+      </div>)}
+    </div>
+    {guideTitle && <div class="model-choice__guide"><h3>{guideTitle}</h3><div>{models.filter((model) => model.guidance).map((model) => <article><strong>{model.title}</strong><p>{model.guidance}</p></article>)}</div></div>}
+    {note && <p class="model-choice__note"><strong>{note.label}</strong> {note.text}</p>}
+  </div>
+  <script type="application/json" data-model-choice-config set:html={JSON.stringify(config)}></script>
+</section>
+
+<script>
+  import { courseStateReady } from "../lib/course-state";
+  import { watchVisiblePanelExploration } from "../lib/visible-panel-exploration";
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-model-choice]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+    const config = JSON.parse(root.querySelector<HTMLScriptElement>("[data-model-choice-config]")?.textContent || "{}") as { needs: { id: string; correctId: string; correctFeedback: string; incorrectFeedback: string }[] };
+    const needs = [...root.querySelectorAll<HTMLButtonElement>("[data-need-control]")];
+    const panels = [...root.querySelectorAll<HTMLElement>("[data-model-panel]")];
+    const answers = courseState.get<Record<string, string>>(`${root.id}:answers`, {});
+    let active = courseState.get<string>(`${root.id}:active`, config.needs[0]?.id || "");
+    if (!config.needs.some((need) => need.id === active)) active = config.needs[0]?.id || "";
+    const creditVisible = watchVisiblePanelExploration({ root, panels, activePanel: () => answers[active] ? panels.find((panel) => !panel.hidden) : undefined, itemId: (panel) => panel.dataset.modelPanel, courseState });
+    const render = () => {
+      needs.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.needControl === active)));
+      panels.forEach((panel) => {
+        const selected = panel.dataset.modelPanel === active;
+        panel.hidden = !selected;
+        if (!selected) return;
+        const need = config.needs.find((item) => item.id === active);
+        const answer = answers[active];
+        panel.querySelectorAll<HTMLButtonElement>("[data-model-id]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.modelId === answer)));
+        const feedback = panel.querySelector<HTMLElement>("[data-model-feedback]");
+        if (!feedback || !need || !answer) { if (feedback) { feedback.hidden = true; feedback.textContent = ""; delete feedback.dataset.result; } return; }
+        const correct = answer === need.correctId;
+        feedback.hidden = false; feedback.dataset.result = correct ? "correct" : "incorrect"; feedback.textContent = correct ? need.correctFeedback : need.incorrectFeedback;
+      });
+    };
+    const selectNeed = (id: string, persist = true) => { if (!config.needs.some((need) => need.id === id)) return; active = id; if (persist) courseState.set(`${root.id}:active`, active); render(); creditVisible(); };
+    needs.forEach((button) => button.addEventListener("click", () => selectNeed(button.dataset.needControl || "")));
+    panels.forEach((panel) => panel.querySelectorAll<HTMLButtonElement>("[data-model-id]").forEach((button) => button.addEventListener("click", () => {
+      if (!button.dataset.modelId) return; answers[active] = button.dataset.modelId; courseState.set(`${root.id}:answers`, answers); render(); creditVisible();
+    })));
+    selectNeed(active, false);
+  }));
+</script>

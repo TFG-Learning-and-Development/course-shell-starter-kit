@@ -17,7 +17,7 @@ export type CompletionMilestone = {
 // the exact ordered IDs, so accidental reordering cannot reinterpret progress.
 export const completionSettings = {
   storageKey: "astro-course-progress:course-shell:v3",
-  sequentialUnlocking: true,
+  sequentialUnlocking: false,
 } as const;
 
 export const completionMilestones: CompletionMilestone[] = [

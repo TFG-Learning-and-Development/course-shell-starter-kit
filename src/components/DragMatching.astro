@@ -1,0 +1,101 @@
+---
+export type DragMatchColumn = { id: string; label: string; };
+export type DragMatchAnswer = { id: string; text: string; };
+export type DragMatchRow = { id: string; prompt: string; answers: Record<string, string>; };
+export type DragMatchLabels = {
+  desktopInstruction: string; mobileInstruction: string; answerBank: string; placeholder: string;
+  pickerTitle: string; close: string; clear: string; check: string; reset: string;
+  emptyFeedback: string; correctFeedback: string; incorrectFeedback: string;
+};
+interface Props { id: string; label: string; columns: DragMatchColumn[]; rows: DragMatchRow[]; answers: DragMatchAnswer[]; labels: DragMatchLabels; shuffle?: boolean; }
+const { id, label, columns, rows, answers, labels, shuffle = true } = Astro.props;
+const config = { id, answers, labels, shuffle };
+---
+
+<form id={id} class="drag-matching" data-drag-matching data-completion-id={id} aria-label={label} style={`--drag-match-columns: ${columns.length}`} novalidate>
+  <input class="drag-matching__completion" type="checkbox" data-completion-option aria-hidden="true" tabindex="-1" />
+  <p class="drag-matching__instruction drag-matching__instruction--desktop">{labels.desktopInstruction}</p>
+  <p class="drag-matching__instruction drag-matching__instruction--mobile">{labels.mobileInstruction}</p>
+  <div class="drag-matching__board" data-match-board>
+    <div class="drag-matching__headers" aria-hidden="true"><span></span>{columns.map((column) => <strong>{column.label}</strong>)}</div>
+    {rows.map((row) => <section class="drag-matching__row" data-match-row={row.id} aria-label={row.prompt}>
+      <h3>{row.prompt}</h3>
+      {columns.map((column) => <button class="drag-matching__slot" type="button" data-slot-id={`${row.id}:${column.id}`} data-slot-label={`${row.prompt}: ${column.label}`} data-expected-answer={row.answers[column.id]} aria-label={`${row.prompt}: ${column.label}`}>
+        <span data-slot-placeholder>{labels.placeholder}</span><span class="drag-matching__slot-answer" data-slot-answer></span>
+      </button>)}
+    </section>)}
+  </div>
+  <section class="drag-matching__bank" aria-label={labels.answerBank}><h3>{labels.answerBank}</h3><div class="drag-matching__answers" data-answer-bank>{answers.map((answer) => <button class="drag-matching__answer" type="button" draggable="true" data-answer-id={answer.id}>{answer.text}</button>)}</div></section>
+  <div class="drag-matching__actions"><button class="premium-action" type="submit" data-match-check>{labels.check}</button><button class="premium-action premium-action--secondary" type="button" data-match-reset>{labels.reset}</button></div>
+  <p class="drag-matching__result" data-match-result aria-live="polite"></p>
+  <dialog class="drag-matching__picker" data-match-picker aria-label={labels.pickerTitle}><div class="drag-matching__picker-header"><h3 data-picker-heading>{labels.pickerTitle}</h3><button class="drag-matching__close" type="button" data-picker-close aria-label={labels.close}>×</button></div><div class="drag-matching__picker-options" data-picker-options></div><button class="premium-action premium-action--secondary" type="button" data-picker-clear>{labels.clear}</button></dialog>
+  <script type="application/json" data-drag-match-config set:html={JSON.stringify(config).replaceAll("<", "\\u003c")}></script>
+</form>
+<script>
+    import { courseStateReady } from "../lib/course-state";
+    type Answer = { id: string; text: string };
+    type Labels = { desktopInstruction: string; mobileInstruction: string; answerBank: string; placeholder: string; pickerTitle: string; close: string; clear: string; check: string; reset: string; emptyFeedback: string; correctFeedback: string; incorrectFeedback: string; };
+    type Config = { id: string; answers: Answer[]; labels: Labels; shuffle: boolean };
+    courseStateReady.then((courseState) => document.querySelectorAll<HTMLFormElement>("[data-drag-matching]").forEach((root) => {
+      if (root.dataset.ready === "true") return;
+      root.dataset.ready = "true";
+      const node = root.querySelector<HTMLScriptElement>("[data-drag-match-config]");
+      if (!node?.textContent) return;
+      const { id, answers, labels, shuffle } = JSON.parse(node.textContent) as Config;
+      const slots = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-slot-id]"));
+      const bank = root.querySelector<HTMLElement>("[data-answer-bank]");
+      const result = root.querySelector<HTMLElement>("[data-match-result]");
+      const completion = root.querySelector<HTMLInputElement>("[data-completion-option]");
+      const picker = root.querySelector<HTMLDialogElement>("[data-match-picker]");
+      const pickerOptions = root.querySelector<HTMLElement>("[data-picker-options]");
+      const pickerHeading = root.querySelector<HTMLElement>("[data-picker-heading]");
+      let selectedAnswerId = "";
+      let pickerSlot: HTMLButtonElement | undefined;
+      const assignments: Record<string, string> = courseState.get(`${id}:assignments`, {});
+      const answerById = new Map(answers.map((answer) => [answer.id, answer]));
+      const shuffled = <T,>(items: T[]) => shuffle ? [...items].sort(() => Math.random() - 0.5) : [...items];
+      const hasAllAssignments = () => slots.every((slot) => {
+        const answerId = assignments[slot.dataset.slotId || ""];
+        return Boolean(answerId && answerById.has(answerId));
+      });
+      const answerButton = (answerId: string) => {
+        const answer = answerById.get(answerId); if (!answer) return undefined;
+        const button = document.createElement("button"); button.className = "drag-matching__answer"; button.type = "button"; button.draggable = true; button.dataset.answerId = answer.id; button.textContent = answer.text; return button;
+      };
+      const save = () => courseState.set(`${id}:assignments`, assignments);
+      const updateSlots = () => {
+        slots.forEach((slot) => {
+          const answerId = assignments[slot.dataset.slotId || ""]; const answer = answerId ? answerById.get(answerId) : undefined;
+          const placeholder = slot.querySelector<HTMLElement>("[data-slot-placeholder]"); const answerNode = slot.querySelector<HTMLElement>("[data-slot-answer]");
+          if (answerId) slot.dataset.answerId = answerId; else delete slot.dataset.answerId; slot.classList.toggle("is-filled", Boolean(answer)); if (placeholder) placeholder.hidden = Boolean(answer); if (answerNode) answerNode.textContent = answer?.text || "";
+        });
+        const assigned = new Set(Object.values(assignments));
+        bank?.replaceChildren(...shuffled(answers.filter((answer) => !assigned.has(answer.id)).map((answer) => answerButton(answer.id)).filter(Boolean) as HTMLButtonElement[]));
+        if (completion) completion.checked = hasAllAssignments();
+      };
+      const assign = (slot: HTMLButtonElement, answerId: string) => {
+        const slotId = slot.dataset.slotId; if (!slotId || !answerById.has(answerId)) return;
+        Object.entries(assignments).forEach(([key, value]) => { if (value === answerId) delete assignments[key]; }); delete assignments[slotId]; assignments[slotId] = answerId; selectedAnswerId = ""; if (result) result.textContent = ""; save(); updateSlots();
+      };
+      const clear = (slot: HTMLButtonElement) => { const slotId = slot.dataset.slotId; if (!slotId) return; delete assignments[slotId]; if (result) result.textContent = ""; save(); updateSlots(); };
+      const selectAnswer = (answerId: string) => { selectedAnswerId = selectedAnswerId === answerId ? "" : answerId; root.querySelectorAll<HTMLElement>("[data-answer-bank] [data-answer-id]").forEach((button) => button.classList.toggle("is-selected", button.dataset.answerId === selectedAnswerId)); };
+      const openPicker = (slot: HTMLButtonElement) => {
+        if (!picker || !pickerOptions) return; pickerSlot = slot; if (pickerHeading) pickerHeading.textContent = slot.dataset.slotLabel || labels.pickerTitle;
+        pickerOptions.replaceChildren(...answers.map((answer) => { const option = answerButton(answer.id)!; option.addEventListener("click", () => { assign(slot, answer.id); picker.close(); }); return option; })); picker.showModal();
+      };
+      const isMobile = () => window.matchMedia("(max-width: 48rem)").matches;
+      updateSlots();
+      root.addEventListener("click", (event) => {
+        const slot = (event.target as Element).closest<HTMLButtonElement>("[data-slot-id]");
+        if (slot) { if (isMobile()) { openPicker(slot); return; } if (selectedAnswerId) assign(slot, selectedAnswerId); else if (slot.dataset.answerId) clear(slot); return; }
+        const answer = (event.target as Element).closest<HTMLElement>("[data-answer-bank] [data-answer-id]"); if (answer) selectAnswer(answer.dataset.answerId || "");
+      });
+      root.addEventListener("dragstart", (event) => { const answer = (event.target as Element).closest<HTMLElement>("[data-answer-id]"); if (answer instanceof HTMLElement) event.dataTransfer?.setData("text/plain", answer.dataset.answerId || ""); });
+      slots.forEach((slot) => { slot.addEventListener("dragover", (event) => event.preventDefault()); slot.addEventListener("drop", (event) => { event.preventDefault(); const answerId = event.dataTransfer?.getData("text/plain"); if (answerId) assign(slot, answerId); }); });
+      root.querySelector("[data-match-reset]")?.addEventListener("click", () => { Object.keys(assignments).forEach((key) => delete assignments[key]); selectedAnswerId = ""; if (result) result.textContent = ""; save(); updateSlots(); });
+      root.addEventListener("submit", (event) => { event.preventDefault(); if (!hasAllAssignments()) { if (result) result.textContent = labels.emptyFeedback; return; } const correct = slots.every((slot) => assignments[slot.dataset.slotId || ""] === slot.dataset.expectedAnswer); if (result) result.textContent = correct ? labels.correctFeedback : labels.incorrectFeedback; });
+      root.querySelector("[data-picker-close]")?.addEventListener("click", () => picker?.close());
+      root.querySelector("[data-picker-clear]")?.addEventListener("click", () => { if (pickerSlot) clear(pickerSlot); picker?.close(); });
+      window.addEventListener("course-progress:reset", () => { Object.keys(assignments).forEach((key) => delete assignments[key]); selectedAnswerId = ""; if (result) result.textContent = ""; updateSlots(); });
+    }));
+</script>

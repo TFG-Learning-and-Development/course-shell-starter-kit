@@ -1,0 +1,16 @@
+---
+export type JourneyIconName = "play" | "search" | "activity" | "gauge" | "mountain" | "award" | "check" | "lock";
+interface Props { name: JourneyIconName; class?: string }
+const { name, class: className } = Astro.props as Props;
+---
+
+<svg class={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+  {name === "play" && <><path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z" /><circle cx="12" cy="12" r="10" /></>}
+  {name === "search" && <><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></>}
+  {name === "activity" && <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />}
+  {name === "gauge" && <><path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" /></>}
+  {name === "mountain" && <path d="m8 3 4 8 5-5 5 15H2L8 3z" />}
+  {name === "award" && <><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526" /><circle cx="12" cy="8" r="6" /></>}
+  {name === "check" && <path d="M20 6 9 17l-5-5" />}
+  {name === "lock" && <><rect width="14" height="11" x="5" y="11" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>}
+</svg>

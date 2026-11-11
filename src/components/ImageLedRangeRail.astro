@@ -1,0 +1,38 @@
+---
+export type ImageLedRangeItem = { id: string; title: string; summary: string; image: { src: string; alt: string }; detail?: string };
+interface Props { id: string; label: string; items: readonly ImageLedRangeItem[]; previousLabel: string; nextLabel: string; }
+const { id, label, items, previousLabel, nextLabel } = Astro.props as Props;
+---
+
+<section class="image-led-range-rail" data-image-led-range-rail aria-label={label}>
+  <div class="image-led-range-rail__controls">
+    <button type="button" data-range-previous aria-controls={id} aria-label={previousLabel}>←</button>
+    <button type="button" data-range-next aria-controls={id} aria-label={nextLabel}>→</button>
+  </div>
+  <div class="image-led-range-rail__track" id={id} tabindex="0">
+    {items.map((item) => <article class="image-led-range-rail__card" data-range-item={item.id}>
+      <img src={item.image.src} alt={item.image.alt} loading="lazy" />
+      <div class="image-led-range-rail__overlay">
+        <h3>{item.title}</h3>
+        <p>{item.summary}</p>
+        {item.detail && <p class="image-led-range-rail__detail">{item.detail}</p>}
+      </div>
+    </article>)}
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-image-led-range-rail]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+    const track = root.querySelector<HTMLElement>(".image-led-range-rail__track");
+    if (!track) return;
+    const move = (direction: number) => {
+      const card = track.querySelector<HTMLElement>("[data-range-item]");
+      const amount = (card?.offsetWidth || 0) + 24;
+      track.scrollBy({ left: direction * amount, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    };
+    root.querySelector("[data-range-previous]")?.addEventListener("click", () => move(-1));
+    root.querySelector("[data-range-next]")?.addEventListener("click", () => move(1));
+  });
+</script>

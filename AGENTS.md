@@ -2,6 +2,17 @@
 
 This repository is a reusable Astro course shell.
 
+## Course-authoring workflow
+
+For every new course, work through the following before implementation:
+
+1. **Discover the inputs.** Inspect the supplied storyboard, mood board and assets. Confirm the explicit `One-scroll` or `Multi-page` format; identify approved learner-facing copy, questions, feedback, interactions, branding, image references and available media. Flag missing required information without inventing learner-facing content.
+2. **Consult the foundation.** Read [`docs/components.md`](docs/components.md), [`docs/patterns.md`](docs/patterns.md), [`docs/typography.md`](docs/typography.md), [`docs/course-assets.md`](docs/course-assets.md), [`docs/course-engine.md`](docs/course-engine.md) and [`docs/completion-tracking.md`](docs/completion-tracking.md). Understand each relevant component or pattern's purpose, properties, accessibility and completion behaviour before selecting it.
+3. **Make a concise internal plan.** Record the course format, content/page structure, component and pattern choices, theme/media approach, completion requirements and any material input gaps. Make routine implementation decisions within the approved brief without an approval pause.
+4. **Compose the course intentionally.** Act as an instructional designer, UX/UI designer and Astro developer: use the mood board to create a coherent visual identity through the established theme, branding, typography, spacing, imagery and approved patterns. Aim for clear hierarchy, deliberate composition, consistent art direction, visual variety, responsive pacing and cohesive styling. Prefer approved implementations over replacements, and never add interactions or copy merely to demonstrate the library.
+5. **Treat the demonstration as a capability example, not a template.** Its exact page composition, component order and visual arrangements are not compulsory. Interpret each new storyboard independently; use different approved layouts and combinations where appropriate while preserving the shell, design system, accessibility, navigation, tracking and SCORM compatibility.
+6. **Build and review by stage.** Follow the Preview, Review and Release rules below. A successful automated build is not visual approval; compare rendered content with the storyboard and mood board, then report remaining visual, content or live-LMS work.
+
 ## Mandatory storyboard copy fidelity
 
 - Use only approved storyboard copy for learner-facing content. Never generate additional introductions, summaries, examples, transitions, activity instructions, questions, answers or feedback. If required copy is missing, ask for it rather than writing it yourself. Existing mandatory shell interface labels remain permitted and retain their required wording.

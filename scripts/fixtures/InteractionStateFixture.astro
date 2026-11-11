@@ -4,6 +4,12 @@ import StepGroup from "../../src/components/StepGroup.astro";
 import CourseCarousel from "../../src/components/CourseCarousel.astro";
 import ExploreGroup from "../../src/components/ExploreGroup.astro";
 import ItemExplorer from "../../src/components/ItemExplorer.astro";
+import FeatureHotspots from "../../src/components/FeatureHotspots.astro";
+import ModelChoice from "../../src/components/ModelChoice.astro";
+import ProductFlipcards from "../../src/components/ProductFlipcards.astro";
+import DragMatching from "../../src/components/DragMatching.astro";
+import ProductCatalogPattern from "../../src/components/ProductCatalogPattern.astro";
+import ImageLedRangeRail from "../../src/components/ImageLedRangeRail.astro";
 import FlipCards from "../../src/components/FlipCards.astro";
 import PremiumAssessment from "../../src/components/PremiumAssessment.astro";
 import { defaultCourseTheme, validateCourseConfig, type CourseConfig } from "../../src/data/course-config";
@@ -21,6 +27,10 @@ const config: CourseConfig = {
     { id: "fixture-knowledge", label: "Knowledge check", type: "submit", targetId: "fixture-knowledge", path: "/", required: true },
     { id: "fixture-flips", label: "Cards", type: "explore", targetId: "fixture-flips", path: "/", required: true, requiredItems: ["front", "back"] },
     { id: "fixture-tabs-other", label: "Other tabs", type: "explore", targetId: "fixture-tabs-other", path: "/", required: true, requiredItems: ["alpha", "beta"] },
+    { id: "fixture-hotspots", label: "Feature points", type: "explore", targetId: "fixture-hotspots", path: "/", required: true, requiredItems: ["alpha", "beta"] },
+    { id: "fixture-model-choice", label: "Model choice", type: "explore", targetId: "fixture-model-choice", path: "/", required: true, requiredItems: ["first", "second"] },
+    { id: "fixture-product-flips", label: "Product cards", type: "explore", targetId: "fixture-product-flips", path: "/", required: true, requiredItems: ["one", "two"] },
+    { id: "fixture-drag-match", label: "Drag matching", type: "submit", targetId: "fixture-drag-match", path: "/", required: true },
   ] },
   package: { identifier: "interaction-fixture-scorm-12", filename: "Interaction-Fixture.zip", launchFile: "index.html", title: "Interaction state fixture" },
 };
@@ -35,4 +45,10 @@ validateCourseConfig(config);
   <PremiumAssessment id="fixture-assessment" title="Choose an action" instruction="Select one response to see feedback." question={{ prompt: "Which action fits the goal?", options: ["Compare against a criterion", "Wait for a timer"], correctIndex: 0, correctFeedback: "A criterion helps.", incorrectFeedback: "A timer does not help." }} />
   <PremiumAssessment id="fixture-knowledge" title="Check understanding" instruction="Select one response to see feedback." question={{ prompt: "What makes feedback useful?", options: ["A next step", "An unrelated detail"], correctIndex: 0, correctFeedback: "A next step helps.", incorrectFeedback: "Choose a useful next step." }} />
   <div id="fixture-nested-tabs"><ExploreGroup id="fixture-tabs-other" title="Other tabs" variant="tabs" items={[{ id: "alpha", title: "Alpha", body: "Other first tab." }, { id: "beta", title: "Beta", body: "Other second tab." }]} /></div>
+  <FeatureHotspots id="fixture-hotspots" title="Feature points" image={{ src: "/assets/demo/editorial-landscape.svg", alt: "Abstract landscape" }} detailPrompt="Select a point." items={[{ id: "alpha", title: "Alpha", benefit: "First feature detail.", position: { x: 30, y: 40 } }, { id: "beta", title: "Beta", benefit: "Second feature detail.", position: { x: 70, y: 60 } }]} />
+  <ModelChoice id="fixture-model-choice" title="Model choice" needsLabel="Needs" promptHeading="Choose a model" selectionInstruction="Choose one." models={[{ id: "guided", title: "Guided", summary: "Guided sequence.", image: { src: "/assets/demo/item-plan.svg", alt: "Plan icon" } }, { id: "open", title: "Open", summary: "Open exploration.", image: { src: "/assets/demo/item-reflect.svg", alt: "Reflection icon" } }]} needs={[{ id: "first", prompt: "First need", correctId: "guided", correctFeedback: "Correct first.", incorrectFeedback: "Incorrect first." }, { id: "second", prompt: "Second need", correctId: "open", correctFeedback: "Correct second.", incorrectFeedback: "Incorrect second." }]} />
+  <ProductFlipcards id="fixture-product-flips" label="Product cards" labels={{ reveal: "Reveal", return: "Return", previous: "Previous", next: "Next" }} products={[{ id: "one", title: "One", front: "First front.", backTitle: "First back", back: "First detail." }, { id: "two", title: "Two", front: "Second front.", backTitle: "Second back", back: "Second detail." }]} />
+  <DragMatching id="fixture-drag-match" label="Drag matching" shuffle={false} columns={[{ id: "one", label: "One" }, { id: "two", label: "Two" }]} rows={[{ id: "first", prompt: "First prompt", answers: { one: "a", two: "b" } }]} answers={[{ id: "a", text: "Answer A" }, { id: "b", text: "Answer B" }]} labels={{ desktopInstruction: "Select an answer and a space.", mobileInstruction: "Select a space.", answerBank: "Answers", placeholder: "Select", pickerTitle: "Choose", close: "Close", clear: "Clear", check: "Check", reset: "Reset", emptyFeedback: "Complete every space.", correctFeedback: "Correct.", incorrectFeedback: "Try again." }} />
+  <ProductCatalogPattern id="fixture-product-catalog" title="Catalog pattern" labels={{ categoryTabs: "Categories", productChoices: "Products", imageViews: "Views" }} categories={[{ id: "everyday", label: "Everyday" }, { id: "specialist", label: "Specialist" }]} products={[{ id: "plan", categoryId: "everyday", name: "Plan", lead: "Plan lead.", images: [{ src: "/assets/demo/item-plan.svg", alt: "Plan icon", label: "Plan" }, { src: "/assets/demo/editorial-landscape.svg", alt: "Landscape", label: "Context" }], details: [{ label: "Use", text: "Plan work." }], proof: [{ label: "Proof", text: "Plan cue." }] }, { id: "discuss", categoryId: "specialist", name: "Discuss", lead: "Discuss lead.", images: [{ src: "/assets/demo/item-discuss.svg", alt: "Discussion icon", label: "Discussion" }, { src: "/assets/demo/editorial-landscape.svg", alt: "Landscape", label: "Context" }], details: [{ label: "Use", text: "Discuss work." }], proof: [{ label: "Proof", text: "Discussion cue." }] }]} />
+  <ImageLedRangeRail id="fixture-image-led-range" label="Image-led options" previousLabel="Previous" nextLabel="Next" items={[{ id: "plan", title: "Plan", summary: "Plan summary.", image: { src: "/assets/demo/item-plan.svg", alt: "Plan icon" } }, { id: "reflect", title: "Reflect", summary: "Reflect summary.", image: { src: "/assets/demo/item-reflect.svg", alt: "Reflect icon" } }, { id: "discuss", title: "Discuss", summary: "Discuss summary.", image: { src: "/assets/demo/item-discuss.svg", alt: "Discussion icon" } }]} />
 </main></div></body></html>

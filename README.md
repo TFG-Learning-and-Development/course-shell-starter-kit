@@ -6,6 +6,10 @@ The dependency baseline is Astro `7.3.8` with Tailwind CSS `4.2.2` through `@tai
 
 The two `@emnapi` development dependencies satisfy optional WASM compiler runtime peers in Astro 7's dependency graph. Keeping them explicit makes the tested installation reproducible; they are build-tool dependencies and are not shipped as browser code.
 
+## Authoring a new course
+
+[`AGENTS.md`](AGENTS.md) is the authoritative course-authoring workflow and must be read before building. It covers input discovery, storyboard fidelity, course format, composition, completion, review and Release boundaries. Use [`docs/components.md`](docs/components.md) for shared component behaviour, [`docs/patterns.md`](docs/patterns.md) for approved design patterns, and the linked typography, asset, engine and completion documentation for implementation details. The included two-page course demonstrates capabilities; it is not a prescribed layout for future courses.
+
 ## Requirements
 
 - Node.js `>=22.19.0` (successful local checks used Node.js `24.11.1`; the minimum version still needs a direct test)

@@ -1,0 +1,128 @@
+---
+export type ProductCatalogCategory = { id: string; label: string };
+export type ProductCatalogImage = { src: string; alt: string; label: string };
+export type ProductCatalogDetail = { label: string; text: string };
+export type ProductCatalogProfile = { image: ProductCatalogImage; label: string; text: string };
+export type ProductCatalogProof = { label: string; text: string };
+export type ProductCatalogProduct = {
+  id: string;
+  categoryId: string;
+  name: string;
+  lead: string;
+  images: readonly ProductCatalogImage[];
+  profile?: ProductCatalogProfile;
+  details: readonly ProductCatalogDetail[];
+  proof: readonly ProductCatalogProof[];
+};
+export type ProductCatalogLabels = { categoryTabs: string; productChoices: string; imageViews: string };
+
+interface Props {
+  id: string;
+  title: string;
+  intro?: string;
+  instruction?: string;
+  categories: readonly ProductCatalogCategory[];
+  products: readonly ProductCatalogProduct[];
+  labels: ProductCatalogLabels;
+}
+
+const { id, title, intro, instruction, categories, products, labels } = Astro.props as Props;
+const productsFor = (categoryId: string) => products.filter((product) => product.categoryId === categoryId);
+---
+
+<section class="product-catalog-pattern" id={id} data-product-catalog-pattern aria-labelledby={`${id}-heading`}>
+  <div class="product-catalog-pattern__intro">
+    <h2 id={`${id}-heading`}>{title}</h2>
+    {intro && <p>{intro}</p>}
+    {instruction && <p class="product-catalog-pattern__instruction">{instruction}</p>}
+  </div>
+
+  <div class="product-catalog-pattern__tabs" role="tablist" aria-label={labels.categoryTabs}>
+    {categories.map((category, index) => <button id={`${id}-tab-${category.id}`} type="button" role="tab" data-catalog-category={category.id} aria-controls={`${id}-panel-${category.id}`} aria-selected={index === 0 ? "true" : "false"} tabindex={index === 0 ? 0 : -1}>{category.label}</button>)}
+  </div>
+
+  {categories.map((category, categoryIndex) => {
+    const categoryProducts = productsFor(category.id);
+    return <section class="product-catalog-pattern__panel" id={`${id}-panel-${category.id}`} role="tabpanel" aria-labelledby={`${id}-tab-${category.id}`} data-catalog-panel={category.id} hidden={categoryIndex !== 0}>
+      <div class="product-catalog-pattern__switch" role="group" aria-label={labels.productChoices}>
+        {categoryProducts.map((product, index) => <button type="button" data-catalog-product={product.id} aria-controls={`${id}-product-${product.id}`} aria-pressed={index === 0 ? "true" : "false"}>{product.name}</button>)}
+      </div>
+      {categoryProducts.map((product, productIndex) => <article class="product-catalog-pattern__product" id={`${id}-product-${product.id}`} data-catalog-product-panel={product.id} hidden={productIndex !== 0} aria-labelledby={`${id}-name-${product.id}`}>
+        <div class="product-catalog-pattern__media">
+          <img data-catalog-image src={product.images[0]?.src} alt={product.images[0]?.alt} width="1200" height="1200" loading="lazy" />
+          {product.images.length > 1 && <div class="product-catalog-pattern__views" role="group" aria-label={`${product.name}: ${labels.imageViews}`}>
+            {product.images.map((image, imageIndex) => <button type="button" data-catalog-image-src={image.src} data-catalog-image-alt={image.alt} aria-pressed={imageIndex === 0 ? "true" : "false"}>{image.label}</button>)}
+          </div>}
+        </div>
+        <div class="product-catalog-pattern__details">
+          <h3 id={`${id}-name-${product.id}`}>{product.name}</h3>
+          <p class="product-catalog-pattern__lead">{product.lead}</p>
+          {product.profile && <aside class="product-catalog-pattern__profile">
+            <img src={product.profile.image.src} alt={product.profile.image.alt} width="160" height="160" loading="lazy" />
+            <p><strong>{product.profile.label}</strong><span>{product.profile.text}</span></p>
+          </aside>}
+          <dl>{product.details.map((detail) => <div><dt>{detail.label}</dt><dd>{detail.text}</dd></div>)}</dl>
+        </div>
+        {product.proof.length > 0 && <aside class="product-catalog-pattern__proof">
+          {product.proof.map((item) => <p><strong>{item.label}</strong><span>{item.text}</span></p>)}
+        </aside>}
+      </article>)}
+    </section>;
+  })}
+</section>
+
+<script>
+  import { courseStateReady } from "../lib/course-state";
+
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-product-catalog-pattern]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>("[data-catalog-category]")];
+    const panels = [...root.querySelectorAll<HTMLElement>("[data-catalog-panel]")];
+    const showProduct = (panel: HTMLElement, productId: string, save = true) => {
+      const products = [...panel.querySelectorAll<HTMLElement>("[data-catalog-product-panel]")];
+      if (!products.some((product) => product.dataset.catalogProductPanel === productId)) return;
+      panel.querySelectorAll<HTMLButtonElement>("[data-catalog-product]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.catalogProduct === productId)));
+      products.forEach((product) => { product.hidden = product.dataset.catalogProductPanel !== productId; });
+      if (save) courseState.set(`${root.id}:selection`, { categoryId: panel.dataset.catalogPanel, productId });
+    };
+    const showCategory = (index: number, focus = false, save = true) => {
+      const panel = panels[index];
+      if (!panel) return;
+      tabs.forEach((tab, tabIndex) => { tab.setAttribute("aria-selected", String(tabIndex === index)); tab.tabIndex = tabIndex === index ? 0 : -1; });
+      panels.forEach((candidate, panelIndex) => { candidate.hidden = panelIndex !== index; });
+      if (focus) tabs[index]?.focus();
+      const selected = panel.querySelector<HTMLButtonElement>('[data-catalog-product][aria-pressed="true"]') || panel.querySelector<HTMLButtonElement>("[data-catalog-product]");
+      if (selected?.dataset.catalogProduct) showProduct(panel, selected.dataset.catalogProduct, save);
+    };
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => showCategory(index));
+      tab.addEventListener("keydown", (event) => {
+        const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index - 1 + tabs.length) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : undefined;
+        if (next === undefined) return;
+        event.preventDefault();
+        showCategory(next, true);
+      });
+    });
+    panels.forEach((panel) => {
+      panel.querySelectorAll<HTMLButtonElement>("[data-catalog-product]").forEach((button) => button.addEventListener("click", () => {
+        if (button.dataset.catalogProduct) showProduct(panel, button.dataset.catalogProduct);
+      }));
+      panel.querySelectorAll<HTMLElement>("[data-catalog-product-panel]").forEach((product) => {
+        const image = product.querySelector<HTMLImageElement>("[data-catalog-image]");
+        product.querySelectorAll<HTMLButtonElement>("[data-catalog-image-src]").forEach((button) => button.addEventListener("click", () => {
+          if (!image || !button.dataset.catalogImageSrc) return;
+          image.src = button.dataset.catalogImageSrc;
+          image.alt = button.dataset.catalogImageAlt || image.alt;
+          product.querySelectorAll<HTMLButtonElement>("[data-catalog-image-src]").forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
+        }));
+      });
+    });
+    const saved = courseState.get<{ categoryId?: string; productId?: string } | null>(`${root.id}:selection`, null);
+    const savedIndex = panels.findIndex((panel) => panel.dataset.catalogPanel === saved?.categoryId);
+    if (savedIndex >= 0) {
+      showCategory(savedIndex, false, false);
+      if (saved?.productId) showProduct(panels[savedIndex], saved.productId, false);
+    }
+  }));
+</script>

@@ -1,0 +1,104 @@
+---
+type HotspotPosition = { x: number | string; y: number | string };
+type Feature = {
+  id: string;
+  title: string;
+  benefit: string;
+  sayLabel?: string;
+  say?: string;
+  position: HotspotPosition;
+};
+type FeatureImage = { src: string; alt: string; width?: number; height?: number };
+type Tip = { label: string; text: string };
+interface Props {
+  id: string;
+  title: string;
+  intro?: string;
+  image: FeatureImage;
+  items: readonly Feature[];
+  detailPrompt: string;
+  tip?: Tip;
+}
+
+const { id, title, intro, image, items, detailPrompt, tip } = Astro.props as Props;
+const cssPosition = (value: number | string) => typeof value === "number" ? `${value}%` : value;
+---
+
+<section class="premium-section feature-hotspots-section" id={id} data-completion-id={id} data-required-items={JSON.stringify(items.map((item) => item.id))} data-feature-hotspots aria-labelledby={`${id}-heading`}>
+  <div class="container">
+    <div class="premium-section__intro">
+      <h2 id={`${id}-heading`}>{title}</h2>
+      {intro && <p>{intro}</p>}
+    </div>
+    <div class="feature-hotspots">
+      <div class="feature-hotspots__media">
+        <img src={image.src} alt={image.alt} width={image.width} height={image.height} loading="lazy" />
+        {items.map((item, index) => (
+          <button
+            class="feature-hotspots__marker"
+            type="button"
+            data-feature-control={item.id}
+            aria-controls={`${id}-panel-${item.id}`}
+            aria-pressed="false"
+            aria-label={item.title}
+            style={`--feature-hotspot-x:${cssPosition(item.position.x)};--feature-hotspot-y:${cssPosition(item.position.y)}`}
+          >{index + 1}</button>
+        ))}
+      </div>
+      <div class="feature-hotspots__content">
+        <div class="feature-hotspots__choices" aria-label={title}>
+          {items.map((item, index) => (
+            <button type="button" data-feature-control={item.id} aria-controls={`${id}-panel-${item.id}`} aria-pressed="false">
+              <span aria-hidden="true">{index + 1}</span>{item.title}
+            </button>
+          ))}
+        </div>
+        <div class="feature-hotspots__details" aria-live="polite">
+          <p data-feature-prompt>{detailPrompt}</p>
+          {items.map((item) => (
+            <article id={`${id}-panel-${item.id}`} data-feature-panel={item.id} hidden aria-labelledby={`${id}-panel-title-${item.id}`}>
+              <h3 id={`${id}-panel-title-${item.id}`}>{item.title}</h3>
+              <p>{item.benefit}</p>
+              {item.sayLabel && item.say && <><strong>{item.sayLabel}</strong><p>{item.say}</p></>}
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+    {tip && <p class="feature-hotspots__tip"><strong>{tip.label}</strong> {tip.text}</p>}
+  </div>
+</section>
+
+<script>
+  import { courseStateReady } from "../lib/course-state";
+  import { watchVisiblePanelExploration } from "../lib/visible-panel-exploration";
+
+  courseStateReady.then((courseState) => document.querySelectorAll<HTMLElement>("[data-feature-hotspots]").forEach((root) => {
+    if (root.dataset.ready === "true") return;
+    root.dataset.ready = "true";
+    const controls = [...root.querySelectorAll<HTMLButtonElement>("[data-feature-control]")];
+    const panels = [...root.querySelectorAll<HTMLElement>("[data-feature-panel]")];
+    const prompt = root.querySelector<HTMLElement>("[data-feature-prompt]");
+    const available = new Set(panels.map((panel) => panel.dataset.featurePanel));
+    let active = courseState.get<string>(`${root.id}:active`, "");
+    if (!available.has(active)) active = "";
+    const creditVisible = watchVisiblePanelExploration({
+      root,
+      panels,
+      activePanel: () => panels.find((panel) => !panel.hidden),
+      itemId: (panel) => panel.dataset.featurePanel,
+      courseState,
+    });
+    const select = (itemId: string, persist = true) => {
+      if (!available.has(itemId)) return;
+      active = itemId;
+      controls.forEach((control) => control.setAttribute("aria-pressed", String(control.dataset.featureControl === active)));
+      panels.forEach((panel) => { panel.hidden = panel.dataset.featurePanel !== active; });
+      if (prompt) prompt.hidden = true;
+      if (persist) courseState.set(`${root.id}:active`, active);
+      creditVisible();
+    };
+    controls.forEach((control) => control.addEventListener("click", () => select(control.dataset.featureControl || "")));
+    if (active) select(active, false);
+  }));
+</script>

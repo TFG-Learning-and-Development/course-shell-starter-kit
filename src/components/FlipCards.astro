@@ -5,13 +5,13 @@ const { id, title, intro, cards } = Astro.props as Props;
 ---
 <section class="premium-section premium-section--dark" id={id} data-completion-id={id} data-required-items={JSON.stringify(cards.map((card) => card.id))} data-flip-cards aria-labelledby={`${id}-heading`}>
   <div class="container"><div class="premium-section__intro"><h2 id={`${id}-heading`}>{title}</h2>{intro && <p>{intro}</p>}</div><div class="premium-card-grid">
-    {cards.map((card) => <button class="flip-card" type="button" aria-expanded="false" data-flip-id={card.id}><span class="flip-card__inner"><span class="flip-card__face flip-card__front"><span><strong>{card.title}</strong><span>{card.front}</span></span><span class="flip-card__action">Select to reveal</span></span><span class="flip-card__face flip-card__back" aria-hidden="true"><span><strong>{card.title}</strong><span>{card.back}</span></span><span class="flip-card__action">Select to turn back</span></span></span></button>)}
+    {cards.map((card) => <button class="flip-card" type="button" aria-expanded="false" aria-label={`Reveal details for ${card.title}`} data-reveal-label={`Reveal details for ${card.title}`} data-return-label={`Return to ${card.title}`} data-flip-id={card.id}><span class="flip-card__inner"><span class="flip-card__face flip-card__front"><span><strong>{card.title}</strong><span>{card.front}</span></span><span class="flip-card__rotate-icon" aria-hidden="true">↻</span></span><span class="flip-card__face flip-card__back" aria-hidden="true"><span><strong>{card.title}</strong><span>{card.back}</span></span><span class="flip-card__rotate-icon" aria-hidden="true">↻</span></span></span></button>)}
   </div></div>
 </section>
 <script>
   document.querySelectorAll<HTMLElement>("[data-flip-cards]").forEach((root) => {
     if (root.dataset.ready === "true") return; root.dataset.ready = "true";
     const buttons = [...root.querySelectorAll<HTMLButtonElement>("[data-flip-id]")];
-    buttons.forEach((button) => button.addEventListener("click", () => { const open = button.getAttribute("aria-expanded") !== "true"; button.setAttribute("aria-expanded", String(open)); button.querySelector(".flip-card__front")?.setAttribute("aria-hidden", String(open)); button.querySelector(".flip-card__back")?.setAttribute("aria-hidden", String(!open)); if (open && button.dataset.flipId) window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId: button.dataset.flipId } })); }));
+    buttons.forEach((button) => button.addEventListener("click", () => { const open = button.getAttribute("aria-expanded") !== "true"; button.setAttribute("aria-expanded", String(open)); button.setAttribute("aria-label", open ? button.dataset.returnLabel || "" : button.dataset.revealLabel || ""); button.querySelector(".flip-card__front")?.setAttribute("aria-hidden", String(open)); button.querySelector(".flip-card__back")?.setAttribute("aria-hidden", String(!open)); if (open && button.dataset.flipId) window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId: button.dataset.flipId } })); }));
   });
 </script>

@@ -1,0 +1,23 @@
+---
+export type EditorialFeatureMedia = { src: string; alt: string };
+interface Props {
+  id: string;
+  title: string;
+  paragraphs: readonly string[];
+  media: EditorialFeatureMedia;
+  backdrop?: EditorialFeatureMedia;
+  callout?: string;
+}
+const { id, title, paragraphs, media, backdrop, callout } = Astro.props as Props;
+---
+
+<section class="editorial-overlay-feature" id={id} aria-labelledby={`${id}-heading`}>
+  {backdrop && <img class="editorial-overlay-feature__backdrop" src={backdrop.src} alt="" aria-hidden="true" loading="lazy" />}
+  <div class="editorial-overlay-feature__media"><img src={media.src} alt={media.alt} loading="lazy" /></div>
+  <div class="editorial-overlay-feature__copy">
+    <h2 id={`${id}-heading`}>{title}</h2>
+    {paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+    {callout && <aside class="editorial-overlay-feature__callout"><p>{callout}</p></aside>}
+  </div>
+  <span class="editorial-overlay-feature__seam" aria-hidden="true"></span>
+</section>
