@@ -302,6 +302,7 @@ const runtimeConfig = { lessons: config.lessons, sections: config.sections || []
       const target = targetFor(milestone);
       let problem = "";
       if (!target) problem = `Unresolved target "${milestone.targetId}" for milestone "${milestone.id}".`;
+      else if (milestone.required && milestone.type === "view") problem = `VIEW milestone "${milestone.id}" must be optional.`;
       else if (target.dataset.completionId !== milestone.id) problem = `Target "${milestone.targetId}" must declare data-completion-id="${milestone.id}".`;
       else if (milestone.type === "watch" && !(target instanceof HTMLVideoElement)) problem = `WATCH target "${milestone.targetId}" must be a video.`;
       else if (milestone.type === "submit" && !((target instanceof HTMLFormElement ? target : target.querySelector("form"))?.querySelector("[data-completion-option]"))) problem = `SUBMIT target "${milestone.targetId}" needs a form with a completion option.`;

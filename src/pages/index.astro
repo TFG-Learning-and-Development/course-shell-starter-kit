@@ -8,13 +8,13 @@ import { courseData } from "../data/course";
 import { courseConfig } from "../data/course-config";
 ---
 <CoursePage lessonId={courseConfig.lessons[0].id}>
-  <section class="hero premium-hero" id="overview" data-nav-section data-completion-id="overview">
+  <section class="hero premium-hero" id="overview" data-nav-section>
     <img class="premium-hero__image" src={courseData.hero.image.src} alt={courseData.hero.image.alt} width="1200" height="800" fetchpriority="high" />
     <div class="premium-hero__shade"></div>
     <div class="container hero-grid"><div class="hero-copy"><h1>{courseData.hero.title}</h1><p class="hero-description">{courseData.hero.description}</p><a class="button-link" href="#editorial">{courseData.hero.actionLabel}</a></div></div>
   </section>
   <div id="editorial"><EditorialSplit title={courseData.editorial.title} paragraphs={courseData.editorial.paragraphs} media={courseData.editorial.media} /></div>
-  <div data-nav-section data-section-id="story"><PortraitQuote id="story" completionId="story" title={courseData.story.title} paragraphs={courseData.story.paragraphs} portrait={courseData.story.portrait} quote={courseData.story.quote} citation={courseData.story.citation} /></div>
+  <div data-nav-section data-section-id="story"><PortraitQuote id="story" title={courseData.story.title} paragraphs={courseData.story.paragraphs} portrait={courseData.story.portrait} quote={courseData.story.quote} citation={courseData.story.citation} /></div>
   <div data-nav-section data-section-id="principles"><FlipCards id="principles" title={courseData.principles.title} intro={courseData.principles.intro} cards={courseData.principles.cards} /></div>
   <div data-nav-section data-section-id="assessment"><PremiumAssessment id="assessment" title={courseData.assessment.title} instruction={courseData.assessment.instruction} question={courseData.assessment.question} /></div>
   <script>

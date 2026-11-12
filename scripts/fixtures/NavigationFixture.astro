@@ -9,8 +9,8 @@ const config: CourseConfig = {
   identity: { id: "navigation-fixture", title: "Navigation fixture", description: "" },
   brand: { homeLabel: "Fixture home" }, theme: defaultCourseTheme,
   lessons: [{ id: "entry", path: "/", label: "Entry" }, { id: "scenario", path: "/scenario/review/", label: "Scenario review" }],
-  completion: { storageKey: "astro-course-progress:navigation-fixture:v2", sequentialUnlocking: true, milestones: [
-    { id: "fixture-entry", label: "Entry", type: "view", targetId: "fixture-entry", path: "/", required: true },
+  completion: { storageKey: "astro-course-progress:navigation-fixture:v3", sequentialUnlocking: true, milestones: [
+    { id: "fixture-entry", label: "Entry", type: "complete", targetId: "fixture-entry", path: "/", required: true },
     { id: "fixture-response", label: "A short response", type: "complete", targetId: "fixture-response", path: "/scenario/review/", required: true },
     { id: "fixture-nav-steps", label: "A visible process", type: "explore", targetId: "fixture-nav-steps", path: "/scenario/review/", required: true, requiredItems: ["start", "middle", "end"] },
   ] },
@@ -20,9 +20,9 @@ validateCourseConfig(config);
 const second = Astro.url.pathname.includes("/scenario/review/");
 ---
 <!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>Navigation fixture</title></head><body><div id="top" data-course-path={second ? "/scenario/review/" : "/"}><CourseProgress {config} /><main>
-  {second ? <ReflectionActivity id="fixture-response" title="A short response" prompt="Write a valid response" minimumLength={4} courseKey={config.completion.storageKey} /> : <section id="fixture-entry" data-completion-id="fixture-entry"><h1>Entry</h1><p>Open the scenario after reading this section.</p></section>}
+  {second ? <ReflectionActivity id="fixture-response" title="A short response" prompt="Write a valid response" minimumLength={4} courseKey={config.completion.storageKey} /> : <button id="fixture-entry" type="button" data-completion-id="fixture-entry" data-completion-trigger="complete">Record entry action</button>}
   {second && <StepGroup id="fixture-nav-steps" title="A visible process" ordered compactVertical steps={[{ id: "start", title: "Start", body: "First step." }, { id: "middle", title: "Middle", body: "Second step." }, { id: "end", title: "End", body: "Final step." }]} />}
   <nav aria-label="Fixture lessons"><a href={second ? "../../" : "./scenario/review/"} data-fixture-lesson-link>{second ? "Entry" : "Scenario review"}</a></nav>
   <a href="#top" data-fixture-top>Back to top</a>
-</main></div></body></html>
-<style is:global>#fixture-entry { min-height: 100vh; padding: 2rem; }</style>
+</main></div><script>document.querySelector("#fixture-entry")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("course-progress:complete", { detail: { activityId: "fixture-entry" } })));</script></body></html>
+<style is:global>#fixture-entry { margin: 2rem; }</style>

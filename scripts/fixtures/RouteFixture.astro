@@ -12,7 +12,7 @@ const lessons = [
   { id: "finish", path: "/finish/", label: "Finish" },
 ];
 const milestones = empty ? [] : [
-  { id: "start-view", label: "Start view", type: "view" as const, targetId: "start-view", path: "/", required: true },
+  { id: "start-complete", label: "Start action", type: "complete" as const, targetId: "start-complete", path: "/", required: true },
   { id: "deep-check", label: "Deep check", type: "complete" as const, targetId: "deep-check", path: "/topics/deep/", required: true },
 ];
 const config: CourseConfig = {
@@ -32,8 +32,9 @@ if (!empty) {
     return false;
   };
   if (!rejected((candidate) => { candidate.lessons[1].path = "/"; }) ||
-      !rejected((candidate) => { candidate.completion.milestones[1].id = "start-view"; }) ||
-      !rejected((candidate) => { candidate.completion.milestones[1].targetId = "start-view"; }) ||
+      !rejected((candidate) => { candidate.completion.milestones[0].type = "view"; }) ||
+      !rejected((candidate) => { candidate.completion.milestones[1].id = "start-complete"; }) ||
+      !rejected((candidate) => { candidate.completion.milestones[1].targetId = "start-complete"; }) ||
       !rejected((candidate) => { candidate.completion.milestones[1].type = "explore"; candidate.completion.milestones[1].requiredItems = ["same", "same"]; }) ||
       !rejected((candidate) => { candidate.completion.storageKey = "unversioned"; }) ||
       !rejected((candidate) => { candidate.completion.milestones[1].path = "/missing/"; })) {
@@ -42,5 +43,5 @@ if (!empty) {
 }
 ---
 <!doctype html><html lang="en"><head><meta charset="UTF-8" /><title>Route fixture</title></head>
-<body><div data-course-path="/"><CourseProgress {config} /><main><section id="start-view" data-completion-id="start-view"><h1>Start</h1></section></main></div></body></html>
-<style is:global>body { min-width: 0; } #start-view { min-height: 100vh; padding: 2rem; }</style>
+<body><div data-course-path="/"><CourseProgress {config} /><main><button id="start-complete" type="button" data-completion-id="start-complete" data-completion-trigger="complete">Record start action</button></main></div><script>document.querySelector("#start-complete")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("course-progress:complete", { detail: { activityId: "start-complete" } })));</script></body></html>
+<style is:global>body { min-width: 0; } #start-complete { margin: 2rem; }</style>

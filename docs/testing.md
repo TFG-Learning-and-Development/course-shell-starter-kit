@@ -4,7 +4,7 @@ This repository is the reusable neutral shell. The default production example is
 
 Check Progress labels in both outstanding and completed lists at mobile and desktop widths, including after reload. Each entry and configured section heading must match its approved title exactly. Confirm the title remains intact if its first word is also a completion verb; never test this by stripping a prefix.
 
-`npm run verify` exercises active-panel exploration in the interaction, One-scroll and Multi-page fixtures: initial viewport entry without a click, offscreen and ancestor-hidden panels, reveal without scrolling, later selection, completion, refresh, duplicate events and independent activity IDs. Verify a real course's approved item IDs and nested reveal composition in the browser as well.
+`npm run verify` exercises active-panel exploration in the interaction, One-scroll and Multi-page fixtures: passive viewport entry, offscreen and ancestor-hidden panels, deliberate selection, completion, refresh, duplicate events and independent activity IDs. A required milestone must not be earned by opening, scrolling, restoring or revealing passive content. Verify a real course's approved item IDs and nested reveal composition in the browser as well.
 
 ## Prepare a local copy
 
@@ -35,7 +35,7 @@ The selected format for a real build comes from the storyboard field `Course for
 
 At mobile and desktop widths, check the logo, Lessons and Progress panels, keyboard focus, Escape/outside-click dismissal, sticky-header anchor clearance and footer. Progress should list each lesson's required **Still to do** activities and completed activities. An activity link should reach and focus its target without granting credit merely for navigation.
 
-Complete the configured content and interactions: the compact ordered steps should credit each visible step; each assessment answer selection should show feedback immediately and count as a valid attempt even when incorrect. Check question arrows, refresh, Back/Forward and resume. Confirm completion appears only after every required milestone is earned. Use `npm run verify` for the browser and simulated-LMS scenarios, including save failure and restoration; inspect its final output for errors.
+Complete the configured interactions: the compact ordered steps should credit each deliberately selected visible step; each assessment answer selection should show feedback immediately and count as a valid attempt even when incorrect. Check that opening, scrolling and passive viewing leave required progress unchanged. Check question arrows, refresh, Back/Forward and resume. Confirm completion appears only after every required milestone is earned. Use `npm run verify` for the browser and simulated-LMS scenarios, including save failure and restoration; inspect its final output for errors.
 
 In both course formats, check a fresh and a restored lesson: open a later card, tab, process step, carousel item and assessment question without completing earlier items. Confirm all are accessible, no unearned milestone appears, and completion still requires approved evidence. Distinguish these in-lesson checks from configured between-lesson unlocking.
 

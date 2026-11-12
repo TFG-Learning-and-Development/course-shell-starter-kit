@@ -10,6 +10,8 @@ The two `@emnapi` development dependencies satisfy optional WASM compiler runtim
 
 [`AGENTS.md`](AGENTS.md) is the authoritative course-authoring workflow and must be read before building. It covers input discovery, storyboard fidelity, course format, composition, completion, review and Release boundaries. Use [`docs/components.md`](docs/components.md) for shared component behaviour, [`docs/patterns.md`](docs/patterns.md) for approved design patterns, and the linked typography, asset, engine and completion documentation for implementation details. The included two-page course demonstrates capabilities; it is not a prescribed layout for future courses.
 
+Start with the practical [`Developer quick start`](docs/quick-start.md). Put private storyboards, mood boards and references in [`course-inputs/`](course-inputs/README.md); they are ignored by Git and excluded from builds and SCORM packages. Put only approved production course assets in `public/assets/`.
+
 ## Requirements
 
 - Node.js `>=22.19.0` (successful local checks used Node.js `24.11.1`; the minimum version still needs a direct test)
@@ -103,7 +105,7 @@ After editing content, run `npm run build` and relevant verification such as `np
 
 ## Mandatory completion workflow
 
-Completion tracking is part of every course build; it does not require a separate request. Replace the starter milestones in `src/data/course-completion.ts` with course-specific requirements derived from the storyboard and the content actually implemented. Connect required sections, videos and interactions to the existing VIEW, WATCH, attempt-based SUBMIT or COMPLETE, and EXPLORE triggers. Preserve the approved defaults and event contracts.
+Completion tracking is part of every course build; it does not require a separate request. Replace the starter milestones in `src/data/course-completion.ts` with course-specific requirements derived from the storyboard and the content actually implemented. Required milestones must represent deliberate learner actions: a valid assessment or matching attempt, approved interactive exploration, a watch threshold, or an explicit completion action. `VIEW` is optional-only and never contributes to required completion, so opening, scrolling or merely viewing content cannot complete a course. Preserve the approved event contracts; correctness is required only when the approved activity contract explicitly says so.
 
 Optional resources, navigation, the fixed footer message and Back to top must not contribute to required completion. Validate unique lesson routes, milestone and target IDs, exploration children, working triggers, the course-specific versioned storage key, browser restoration and LMS suspend/resume. A lesson with no requirements passes through sequential unlocking; an entirely empty requirement set never completes the LMS. See [`docs/completion-tracking.md`](docs/completion-tracking.md) for the exact contracts.
 

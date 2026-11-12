@@ -12,6 +12,7 @@ type Options = {
 // panels nested in another tab, accordion, reveal, or animated container.
 export function watchVisiblePanelExploration({ root, panels, activePanel, itemId, courseState }: Options) {
   const earned = new Set(courseState.explored(root.id));
+  let pendingItemId = "";
   const visiblyRendered = (panel: HTMLElement) => {
     if (!panel.isConnected) return false;
     const visibility = getComputedStyle(panel).visibility;
@@ -27,10 +28,11 @@ export function watchVisiblePanelExploration({ root, panels, activePanel, itemId
     const panel = activePanel();
     if (!panel || !panels.includes(panel) || document.visibilityState !== "visible" || !visiblyRendered(panel)) return;
     const id = itemId(panel);
-    if (!id || earned.has(id)) return;
+    if (!id || id !== pendingItemId || earned.has(id)) return;
     const box = panel.getBoundingClientRect();
     if (box.width <= 0 || box.height <= 0 || box.right <= 0 || box.left >= innerWidth || box.bottom <= 0 || box.top >= innerHeight) return;
     window.dispatchEvent(new CustomEvent("course-progress:explore", { detail: { activityId: root.id, itemId: id } }));
+    pendingItemId = "";
   };
   window.addEventListener("course-progress:explore-state", ((event: CustomEvent<{ activityId: string; itemIds: string[] }>) => {
     if (event.detail.activityId !== root.id) return;
@@ -58,6 +60,9 @@ export function watchVisiblePanelExploration({ root, panels, activePanel, itemId
   document.addEventListener("transitioncancel", checkAfterTransition);
   document.addEventListener("animationend", checkAfterTransition);
   document.addEventListener("visibilitychange", check);
-  requestAnimationFrame(check);
-  return check;
+  return () => {
+    const panel = activePanel();
+    pendingItemId = panel ? itemId(panel) || "" : "";
+    check();
+  };
 }

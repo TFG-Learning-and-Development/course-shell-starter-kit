@@ -5,7 +5,7 @@ import type { CompletionMilestone } from "../../src/data/course-completion";
 
 const mode = Astro.url.pathname.includes("sections") ? "sections" : "lessons";
 const ids = ["visible", "visible-override", "hidden-attr", "ancestor-hidden", "display-none", "ancestor-display", "visibility-hidden", "ancestor-visibility", "visibility-collapse", "opacity-zero", "ancestor-opacity", "content-hidden", "ancestor-content", "offscreen"];
-const milestones: CompletionMilestone[] = ids.map((id) => ({ id: `view-${id}`, label: id, type: "view", targetId: `view-${id}`, path: "/", required: true }));
+const milestones: CompletionMilestone[] = ids.map((id) => ({ id: `view-${id}`, label: id, type: "view", targetId: `view-${id}`, path: "/", required: false }));
 const config: CourseConfig = {
   identity: { id: `view-visibility-${mode}`, title: "VIEW visibility fixture", description: "" },
   brand: { homeLabel: "Fixture home" },

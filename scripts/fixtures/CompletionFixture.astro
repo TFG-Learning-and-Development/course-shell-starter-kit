@@ -6,9 +6,9 @@ import { defaultCourseTheme, type CourseConfig } from "../../src/data/course-con
 import "../../src/styles/global.css";
 
 const milestones: CompletionMilestone[] = [
-  { id: "fixture-view", label: "View", type: "view", targetId: "fixture-view", path: "/", required: true },
-  { id: "fixture-later-view", label: "Later view", type: "view", targetId: "fixture-later-view", path: "/", required: true },
-  { id: "fixture-hidden-view", label: "Hidden view", type: "view", targetId: "fixture-hidden-view", path: "/", required: true },
+  { id: "fixture-view", label: "View", type: "view", targetId: "fixture-view", path: "/", required: false },
+  { id: "fixture-later-view", label: "Later view", type: "view", targetId: "fixture-later-view", path: "/", required: false },
+  { id: "fixture-hidden-view", label: "Hidden view", type: "view", targetId: "fixture-hidden-view", path: "/", required: false },
   { id: "fixture-watch", label: "Watch", type: "watch", targetId: "fixture-watch", path: "/", required: true },
   { id: "fixture-question", label: "Question", type: "submit", targetId: "fixture-question", path: "/", required: true },
   { id: "fixture-explore", label: "Explore", type: "explore", targetId: "fixture-explore", path: "/", requiredItems: ["one", "two"], required: true },

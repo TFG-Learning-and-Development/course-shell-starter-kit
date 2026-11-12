@@ -85,6 +85,7 @@ export function validateCourseConfig(config: CourseConfig): void {
   const types = new Set(["view", "watch", "submit", "explore", "complete", "optional"]);
   for (const item of config.completion.milestones) {
     if (!idPattern.test(item.id) || !idPattern.test(item.targetId) || !item.label.trim() || !types.has(item.type) || typeof item.required !== "boolean") errors.push(`Invalid milestone: ${item.id}.`);
+    if (item.required && item.type === "view") errors.push(`VIEW milestones must be optional: ${item.id}.`);
     if (!config.lessons.some((lesson) => lesson.path === item.path)) errors.push(`Unknown milestone route: ${item.id}.`);
     if (item.type === "explore") {
       if (!item.requiredItems?.length || new Set(item.requiredItems).size !== item.requiredItems.length || item.requiredItems.some((id) => !idPattern.test(id))) errors.push(`Invalid exploration children: ${item.id}.`);

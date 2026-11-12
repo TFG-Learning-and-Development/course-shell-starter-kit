@@ -31,7 +31,7 @@ sections: [
 ],
 ```
 
-The `targetId` values must be real section IDs on the page. Every milestone, including optional ones, must belong to exactly one Progress section when `sections` is configured. A section link scrolls to content without awarding credit by itself; a destination VIEW section may qualify when genuinely visible in the central viewport zone. EXPLORE and valid-attempt rules remain separate. The first lesson remains `/`, and single-page sections do not create extra SCORM routes. The verifier's `SinglePageFixture.astro` is a neutral working example; the normal starter demonstrates multi-page routing.
+The `targetId` values must be real section IDs on the page. Every milestone, including optional ones, must belong to exactly one Progress section when `sections` is configured. A section link scrolls to content without awarding credit by itself. VIEW is optional-only; EXPLORE and valid-attempt rules provide required evidence. The first lesson remains `/`, and single-page sections do not create extra SCORM routes. The verifier's `SinglePageFixture.astro` is a neutral working example; the normal starter demonstrates multi-page routing.
 
 The package launcher keeps the LMS-owned document open while its iframe changes learner pages. It validates `?module=` against configured logical routes and saves the logical route to `cmi.core.lesson_location`. The parent owns SCORM initialization and finish; child components reuse the parent API and save through the existing progress contract. A parent closing guard permits the final child save before finish and prevents late LMS calls. One-scroll packages contain one learner document with section anchors; Multi-page packages include that overview and each configured lesson document. Package and browser metadata use `Content`; keep approved course identity and learner headings in their separate content fields. See [completion tracking](completion-tracking.md) and [testing](testing.md).
 
@@ -44,8 +44,8 @@ For a compact ordered process, pass `ordered compactVertical` to `StepGroup` and
 3. Add matching milestones in `course-completion.ts`. For example:
 
    ```ts
-   { id: "review-intro", label: "Read the review", type: "view",
-     targetId: "review-intro", path: "/review/", required: true }
+   { id: "review-check", label: "Check the review", type: "submit",
+     targetId: "review-check", path: "/review/", required: true }
    ```
 
 4. Increment the storage key version when changing the meaning or order of existing milestones. Set `sequentialUnlocking` to `false` if every lesson should always be available. A lesson with no required milestones passes through unlocking and shows no false 100% score.
@@ -60,6 +60,6 @@ The [packaging shortcut](../AGENTS.md#packaging-shortcut) applies when the user 
 
 **Configure a course:** “Using the storyboard I provide, read `Course format: One-scroll / Multi-page` first and set `courseConfig.navigationMode` accordingly. Replace the neutral lesson data with approved content and sequence, using one page with logical lesson anchors or multiple ordered routes as selected. Keep the shared typography, People Connect footer, accessible header and pinned dependencies. Show the proposed lesson and milestone map before implementing it.”
 
-**Audit completion:** “Compare every implemented required activity with `course-completion.ts`. Check target IDs, VIEW/WATCH/SUBMIT/COMPLETE/EXPLORE triggers, optional exclusions, unlock order, storage version and LMS completion criteria. Fix mismatches and run relevant browser verification. Run the extracted-ZIP verifier only during explicitly requested Release preparation.”
+**Audit completion:** “Compare every implemented required activity with `course-completion.ts`. Check target IDs, deliberate WATCH/SUBMIT/COMPLETE/EXPLORE triggers, optional-only VIEW exclusions, unlock order, storage version and LMS completion criteria. Confirm opening, scrolling and passive viewing cannot complete the course. Fix mismatches and run relevant browser verification. Run the extracted-ZIP verifier only during explicitly requested Release preparation.”
 
 **Prepare handover:** “State the user-selected stage, defaulting to Preview. Report the source state, build and relevant verification, typography, completion, visual inspection and remaining issues. Report `Not run — Preview stage` or `Not run — Review stage` for SCORM packaging as applicable. Only in explicitly requested Release preparation, build approved source, package and verify the ZIP, identify its source state and distinguish simulated LMS results from outstanding live Oracle acceptance. Do not treat packaging as permission to publish, upload or merge; mark a ZIP stale after learner-facing source changes.”

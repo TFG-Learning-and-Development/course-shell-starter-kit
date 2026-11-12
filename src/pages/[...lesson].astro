@@ -15,7 +15,7 @@ const pageData = courseData.lessonPages[lessonId as keyof typeof courseData.less
 if (!pageData) throw new Error(`No lesson page content configured for ${lessonId}.`);
 ---
 <CoursePage lessonId={lessonId}>
-  <section class="premium-section premium-section--dark" id={pageData.targets.intro} data-completion-id={pageData.targets.intro}>
+  <section class="premium-section premium-section--dark" id={pageData.targets.intro}>
     <div class="container"><div class="premium-section__intro premium-section__intro--hero"><h1>{pageData.title}</h1><p>{pageData.introduction}</p></div></div>
   </section>
   <ItemExplorer id={pageData.targets.explorer} title={pageData.explorer.title} intro={pageData.explorer.intro} categories={pageData.explorer.categories} items={pageData.explorer.items} />

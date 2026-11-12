@@ -10,6 +10,20 @@ dist/
 .env.*
 !.env.example
 
+# Private course-authoring source material. Keep only the documented placeholders
+# below; copy approved production assets into public/assets/ when ready.
+/course-inputs/*
+!/course-inputs/README.md
+!/course-inputs/storyboard/
+/course-inputs/storyboard/*
+!/course-inputs/storyboard/.gitkeep
+!/course-inputs/moodboard/
+/course-inputs/moodboard/*
+!/course-inputs/moodboard/.gitkeep
+!/course-inputs/references/
+/course-inputs/references/*
+!/course-inputs/references/.gitkeep
+
 # generated SCORM output
 *.zip
 scorm-output/

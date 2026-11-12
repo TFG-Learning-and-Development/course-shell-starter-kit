@@ -18,13 +18,11 @@ const config: CourseConfig = {
     { id: "tabs", title: "Explore the choices", targetId: "fixture-tabs" },
   ],
   sections: [
-    { id: "fixture-intro", label: "Choose a useful learning pattern", milestoneIds: ["fixture-intro"] },
     { id: "fixture-steps", label: "Explore a short process", milestoneIds: ["fixture-steps"] },
     { id: "fixture-tabs", label: "Explore the choices", milestoneIds: ["fixture-tabs"] },
     { id: "fixture-quiz", label: "Check the decisions", milestoneIds: ["fixture-quiz-first", "fixture-quiz-second"] },
   ],
   completion: { storageKey: "astro-course-progress:single-page-fixture:v1", sequentialUnlocking: true, milestones: [
-    { id: "fixture-intro", label: "Choose a useful learning pattern", type: "view", targetId: "fixture-intro", path: "/", required: true },
     { id: "fixture-steps", label: "Explore a short process", type: "explore", targetId: "fixture-steps", path: "/", requiredItems: ["notice", "choose", "act"], required: true },
     { id: "fixture-quiz-first", label: "Choose the first action", type: "submit", targetId: "fixture-quiz-first", path: "/", required: true },
     { id: "fixture-quiz-second", label: "Choose the next action", type: "submit", targetId: "fixture-quiz-second", path: "/", required: true },

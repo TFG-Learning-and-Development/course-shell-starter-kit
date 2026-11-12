@@ -16,7 +16,7 @@ Design patterns capture a proven composition and its visual rules. They are not 
 
 **Responsive behaviour.** Tabs wrap into an even grid, the product switcher wraps before labels become cramped, and the media/detail columns stack below 48rem. The proof band also becomes a single column. Keep image stages contained and let the product detail determine its height; do not force equal card heights or allow page-level horizontal scrolling.
 
-**What Codex may adapt.** Category count, product count, tab labels, image aspect treatment, the presence of profile context, number of detail/proof items, section backdrop, course accent and supplied type tokens may change to suit the approved visual board. The pattern has no default completion; configure only approved VIEW or EXPLORE evidence in the course where required.
+**What Codex may adapt.** Category count, product count, tab labels, image aspect treatment, the presence of profile context, number of detail/proof items, section backdrop, course accent and supplied type tokens may change to suit the approved visual board. The pattern has no default completion; configure only approved deliberate EXPLORE evidence where required. VIEW may be optional, never required.
 
 **Keep consistent.** Preserve the broad-to-specific reading order, one focused product at a time, strong media/detail contrast, a readable detail column, a visibly separate proof band, semantic button/tab states, keyboard navigation, visible focus and reduced-motion handling. Keep navigation separate from deep-dive content, and never use selection to block access to other products.
 
